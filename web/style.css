@@ -28,8 +28,12 @@ body{margin:0;display:flex;background:var(--bg);color:var(--tx);
 .rail{width:216px;flex:0 0 216px;background:var(--panel);border-right:1px solid var(--line);
   display:flex;flex-direction:column;padding:16px 12px;gap:18px}
 .brand{display:flex;gap:10px;align-items:center;padding:0 4px}
-.logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--acc),var(--new));
-  display:grid;place-items:center;font-weight:700;color:#fff;font-size:13px;letter-spacing:.5px}
+/* MiniMines logo mark - white-only artwork, so it always sits on the fixed
+ * brand navy regardless of the app's own light/dark theme (same pattern as
+ * web/public.css's .pub-logo). */
+.logo{width:34px;height:34px;border-radius:9px;background:var(--mm-navy-fixed);
+  display:grid;place-items:center;flex:0 0 auto}
+.logo img{width:20px;height:auto;display:block}
 .brand b{display:block;font-size:14px;line-height:1.2}
 .brand span{font-size:11px;color:var(--tx3)}
 nav{display:flex;flex-direction:column;gap:2px}
