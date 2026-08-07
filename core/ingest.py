@@ -24,8 +24,14 @@ import os
 import re
 
 HSN_RE = re.compile(r"\b(\d{8}|\d{6})\b")
-QTY_RE = re.compile(r"\b(\d+(?:\.\d+)?)\s*(NOS|PCS|PC|KG|KGS|GM|G|LTR|L|ML|MTR|M|SET|BOX|PKT|ROLL|UNITS?|EA)\b", re.I)
-RATE_RE = re.compile(r"(?:RS\.?|INR|₹)\s*([\d,]+(?:\.\d{1,2})?)", re.I)
+# Indian invoices comma-group numbers (8,000 · 1,65,847.50 in the Indian
+# 2-3-3 lakh/crore style, not the Western 3-3-3 one) - \d+ alone splits
+# "8,000" into "8" and a spurious "000", silently reading an 8000-unit
+# quantity as 0. Accept an optional run of ",\d+" groups of any width
+# instead of assuming a fixed group size.
+_NUM = r"\d{1,3}(?:,\d+)*(?:\.\d+)?"
+QTY_RE = re.compile(r"\b(" + _NUM + r")\s*(NOS|PCS|PC|KG|KGS|GM|G|LTR|L|ML|MTR|M|SET|BOX|PKT|ROLL|UNITS?|EA)\b", re.I)
+RATE_RE = re.compile(r"(?:RS\.?|INR|₹)\s*(" + _NUM + r")", re.I)
 MAKER_RE = re.compile(
     r"\b(?:make|maker|brand|mfg|mfr|manufacturer|vendor)\s*(?:[:\-]\s*)?([A-Za-z][A-Za-z0-9.&\-]{1,20}"
     r"(?:\s+[A-Z][A-Za-z0-9.&\-]{1,20})?)", re.I)
@@ -35,6 +41,141 @@ NOISE_LINE = re.compile(
     r"terms|e-?way|declaration|subject\s+to|for\s+[A-Z].{0,40}$|authorised|signatory|"
     r"total|sub\s*total|grand\s*total|cgst|sgst|igst|round\s*off|amount\s+in\s+words|"
     r"bank|ifsc|a/?c\s*no|page\s+\d+|s\.?\s*no\.?$|hsn/?sac$|description$)", re.I)
+
+# ------------------------------------------------------- invoice item table
+# A scanned/photographed invoice comes back from OCR as a flat list of text
+# lines with no column or row structure at all - the buyer's address, the
+# GSTIN, the column headers, and the actual item description all look
+# identical to a per-line classifier. Real Indian tax invoices (this was
+# tuned against real Tally-generated scans, 7 August 2026) almost always
+# bracket their item table between a recognisable header row
+# ("Description of Goods", "HSN/SAC", "Quantity", "Rate", "Amount" - read as
+# several separate OCR lines, in no fixed order) and a footer
+# ("Amount Chargeable (in words)", the declaration, "This is a Computer
+# Generated Invoice"). Everything outside that bracket is header/footer
+# noise regardless of what it says; everything inside it is item content,
+# even when a single item's description wraps across many separate OCR
+# lines - which it does, constantly.
+_TABLE_HEADER_STRONG = re.compile(
+    r"description\s+of\s+goods|hsn\s*/\s*sac|particulars\s+of\s+goods", re.I)
+_TABLE_HEADER_WEAK = re.compile(
+    r"\b(?:quantity|qty|rate|amount|hsn|sac|particulars|description)\b", re.I)
+_TABLE_FOOTER = re.compile(
+    r"amount\s+chargeable|chargeable\s*\(?\s*in\s+words|we\s+declare|declare\s+that\s+this\s+invoice|"
+    r"computer\s+generated\s+invoice|authorised?\s+signatory|terms\s*&?\s*conditions|"
+    r"e\s*\.?\s*&\s*o\s*\.?\s*e|continued\s+to\s+page|subject\s+to\s+.{0,20}jurisdiction", re.I)
+# A new item starts at a small leading serial number - OCR renders the
+# separator after it inconsistently (". ", ") ", "| ", a bare space, or
+# nothing at all - "1Civil Works" and "6|Civil Works" both occur in real
+# scans of the same invoice template.
+_ITEM_SERIAL = re.compile(r"^\s*(\d{1,2})[).|\s]?\s*([A-Za-z].+)$")
+# A quantity fragment like "1 Nos 81,333.60|Nos" matches the serial pattern
+# just as well as a real "1 Civil Works" does - both are a small leading
+# number followed by a word. The real tell is what that word IS: a unit of
+# measure means this is a quantity, not a new item's serial number, no
+# matter what follows it on the line.
+_STARTS_WITH_UOM = re.compile(
+    r"^(?:NOS|PCS?|KGS?|GM|G|LTR|L|ML|MTR|M|SET|BOX|PKT|ROLL|UNITS?|EA)\b", re.I)
+# A line with no letters at all - a bare rate, a tax percentage, a repeated
+# quantity, an amount subtotal - carries a structured value (already pulled
+# separately by QTY_RE/RATE_RE against the full merged blob) but no
+# descriptive information, so it's dropped when rebuilding the human-
+# readable description text for a merged item.
+_MOSTLY_NUMERIC = re.compile(r"^[\d,.\s%|\[\]()/:\-]+$")
+# Same idea, but for a bare "8,000 Nos" / "25.00Nos" style fragment, which
+# _MOSTLY_NUMERIC alone doesn't catch because the unit word is letters.
+_BARE_QTY_LINE = re.compile(
+    r"^" + _NUM + r"\s*(?:NOS|PCS?|KGS?|GM|G|LTR|L|ML|MTR|M|SET|BOX|PKT|ROLL|UNITS?|EA)\.?$", re.I)
+
+
+def _find_table_bounds(lines):
+    """(start, end) indices bracketing the item table within `lines`
+    (end exclusive), or None if no header row was recognisable - callers
+    fall back to the plain per-line path in that case, which is the safer
+    default for an invoice shaped nothing like the ones this was tuned on."""
+    start = None
+    for i, ln in enumerate(lines):
+        if _TABLE_HEADER_STRONG.search(ln) or len(_TABLE_HEADER_WEAK.findall(ln)) >= 2:
+            start = i + 1
+            break
+    if start is None:
+        return None
+    # the header itself is usually several consecutive short column-name
+    # fragments (HSN/SACQuantity / Rate / Description of Goods / per /
+    # Amount / a mangled "Sl No" split across lines as "SI" ... "No") - OCR
+    # does not read them in a fixed order and not all of them contain a
+    # recognisable keyword ("per", "SI", "No" don't). What every one of
+    # them reliably IS, though, is short and not the start of a numbered
+    # item - so keep consuming on that shape instead of a keyword list, with
+    # a hard cap so a genuinely short first item can't be swallowed forever.
+    consumed = 0
+    while (start < len(lines) and consumed < 8
+           and not _ITEM_SERIAL.match(lines[start])
+           and (len(lines[start]) < 15 or _TABLE_HEADER_STRONG.search(lines[start]))):
+        start += 1
+        consumed += 1
+    end = len(lines)
+    for i in range(start, len(lines)):
+        if _TABLE_FOOTER.search(lines[i]):
+            end = i
+            break
+    return start, end
+
+
+def extract_invoice_items(raw_lines):
+    """The item-table-aware alternative to calling parse_line() on every
+    line independently. Used for anything that comes back as an
+    undifferentiated block of text - OCR, and a digital PDF page with no
+    text layer table PyMuPDF could detect. NOT used for text the operator
+    typed or pasted directly (from_text()), where one line really is one
+    item by the UI's own instruction."""
+    lines = [_clean(x) for x in raw_lines if _clean(x)]
+    bounds = _find_table_bounds(lines)
+    if bounds is None:
+        # no recognisable table header - safest fallback is the plain
+        # per-line filter rather than guessing at a group boundary in
+        # genuinely unstructured text.
+        return [p for ln in lines if (p := parse_line(ln))]
+
+    start, end = bounds
+    items, current = [], []
+
+    def _flush():
+        if not current:
+            return
+        blob = " ".join(current)
+        p = parse_line(blob)
+        if p:
+            # parse_line's own description is the whole blob minus the bits
+            # it recognised (HSN/rate/serial) - still messy here, because a
+            # merged item routinely drags in bare tax-percentage and amount
+            # fragments ("%6 18,000.00 9% 18,000.00") that carry no
+            # descriptive information. Rebuild the description from just
+            # the lines that read as prose, so the operator sees the actual
+            # item text; qty/rate/hsn were already pulled from the full
+            # blob above and are unaffected by this.
+            prose = [ln for ln in current
+                     if not (_MOSTLY_NUMERIC.match(ln) or _BARE_QTY_LINE.match(ln))]
+            # No descriptive line at all - just a stray quantity/rate
+            # fragment ("8 Nos" left over near a page break) - a real item
+            # always has SOME text beyond a bare number+unit, so drop it
+            # rather than surface a phantom item with nothing to identify it.
+            if prose:
+                p["description"] = _clean(" ".join(prose))
+                items.append(p)
+        current.clear()
+
+    for ln in lines[start:end]:
+        if NOISE_LINE.match(ln):
+            continue
+        m = _ITEM_SERIAL.match(ln)
+        if m and not _STARTS_WITH_UOM.match(m.group(2).strip()):
+            _flush()
+            current.append(m.group(2).strip())
+        else:
+            current.append(ln)
+    _flush()
+    return items
 
 
 def _clean(s):
@@ -54,7 +195,7 @@ def parse_line(raw):
         out["hsn"] = m.group(1)
     m = QTY_RE.search(txt)
     if m:
-        out["qty"], out["uom"] = float(m.group(1)), m.group(2).upper()
+        out["qty"], out["uom"] = float(m.group(1).replace(",", "")), m.group(2).upper()
     m = RATE_RE.search(txt)
     if m:
         out["rate"] = float(m.group(1).replace(",", ""))
@@ -178,7 +319,7 @@ def from_pdf(data):
             if not got:
                 txt = page.get_text() or ""
                 if txt.strip():
-                    for p in from_text(txt):
+                    for p in extract_invoice_items(txt.splitlines()):
                         p["page"] = pno
                         lines.append(p)
                     got = True
@@ -187,7 +328,7 @@ def from_pdf(data):
                 ocr, note = _ocr_array(_pixmap_to_array(pix))
                 if note:
                     notes.append(f"page {pno}: {note}")
-                for p in from_text(ocr):
+                for p in extract_invoice_items(ocr.splitlines()):
                     p["page"] = pno
                     p["ocr"] = True
                     lines.append(p)
@@ -204,7 +345,7 @@ def from_image(data):
         return [], "Pillow not installed"
     img = Image.open(io.BytesIO(data)).convert("RGB")
     txt, note = _ocr_array(np.array(img))
-    lines = from_text(txt)
+    lines = extract_invoice_items(txt.splitlines())
     for p in lines:
         p["ocr"] = True
     return lines, note
