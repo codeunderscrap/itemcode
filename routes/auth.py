@@ -124,6 +124,7 @@ PROVIDER_MODELS = {
     "gemini": "gemini-2.0-flash",
     "openai": "gpt-4o-mini",
     "ollama": "llama3.1",
+    "grok": "grok-4",
 }
 PROVIDERS = set(PROVIDER_MODELS)
 
