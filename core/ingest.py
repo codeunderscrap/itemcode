@@ -4,6 +4,20 @@ Every line comes back as {description, qty, uom, rate, hsn, vendor}. Vendor is
 populated only when it appears on the line itself - an invoice-header supplier
 is deliberately ignored, per the coding rule that vendor is part of item
 identity only where the line says so.
+
+PDF/OCR stack: PyMuPDF (`fitz`) reads digital PDFs - text layer and tables -
+and rasterises any page that has neither. PaddleOCR reads whatever is left:
+scanned PDF pages and photographed invoices. Both are real pip dependencies
+(`pymupdf`, `paddlepaddle`, `paddleocr`) - the desktop install now assumes
+internet + admin rights, a deliberate change from the original "no pip
+install" constraint (agents/CONTRACTS.md house rule 1, revised 7 August 2026
+- see that file's changelog note). PaddleOCR's models download once, on
+first real OCR use, and are then cached under the user's profile - the
+first scan on a fresh machine is slow; every one after that is fast. If
+either library is missing (a broken install, not the expected path), each
+function degrades to an empty line list with a plain-English note rather
+than crashing the request - the same principle applies per-page inside
+from_pdf() so one bad page never sinks the rest of the document.
 """
 import io
 import os
@@ -70,69 +84,126 @@ def from_text(text):
     return lines
 
 
-def from_pdf(data):
-    """Text-layer first; fall back to OCR per page when a page has no text."""
+# ------------------------------------------------------------------- OCR
+# PaddleOCR is expensive to construct (it loads detection + recognition +
+# angle-classification models) - built once, lazily, on first real use, and
+# reused for the rest of the process. Constructing it at import time would
+# slow down every server start whether or not anyone ever uploads a scan.
+_OCR_ENGINE = None
+_OCR_UNAVAILABLE = None  # once we know it can't load, remember why and stop retrying
+
+
+def _get_ocr_engine():
+    global _OCR_ENGINE, _OCR_UNAVAILABLE
+    if _OCR_ENGINE is not None:
+        return _OCR_ENGINE, None
+    if _OCR_UNAVAILABLE is not None:
+        return None, _OCR_UNAVAILABLE
     try:
-        import pdfplumber
+        from paddleocr import PaddleOCR
+        _OCR_ENGINE = PaddleOCR(use_angle_cls=True, lang="en", show_log=False)
+        return _OCR_ENGINE, None
+    except Exception as e:                                        # noqa: BLE001
+        _OCR_UNAVAILABLE = (f"OCR unavailable ({e.__class__.__name__}) - "
+                             f"pip install paddlepaddle paddleocr")
+        return None, _OCR_UNAVAILABLE
+
+
+def _ocr_array(img_array):
+    """img_array: an HxWx3 (or HxWx4) numpy array, e.g. from a PyMuPDF
+    pixmap or a decoded photo. Returns (text, note)."""
+    engine, err = _get_ocr_engine()
+    if engine is None:
+        return "", err
+    try:
+        result = engine.ocr(img_array, cls=True)
+    except Exception as e:                                        # noqa: BLE001
+        return "", f"OCR failed ({e.__class__.__name__}: {e})"
+    lines = []
+    for page in (result or []):
+        for det in (page or []):
+            # det = [ [ [x,y]*4 ], (text, confidence) ]
+            text = det[1][0]
+            if text:
+                lines.append(text)
+    return "\n".join(lines), ""
+
+
+def _pixmap_to_array(pix):
+    """fitz.Pixmap -> numpy array, RGB. PaddleOCR reads numpy arrays or file
+    paths directly; going through PIL isn't necessary."""
+    import numpy as np
+    if pix.alpha:
+        pix = fitz_module().Pixmap(pix, 0)  # drop alpha channel
+    arr = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, pix.n)
+    if pix.n == 1:  # greyscale
+        arr = np.repeat(arr, 3, axis=2)
+    return arr
+
+
+def fitz_module():
+    import fitz
+    return fitz
+
+
+def from_pdf(data):
+    """Text-layer first, then tables, then OCR per page - a page only goes
+    to OCR when it has neither, so a normal digital invoice never pays the
+    OCR cost at all."""
+    try:
+        fitz = fitz_module()
     except ImportError:
-        return [], "pdfplumber is not installed - cannot read PDFs"
+        return [], "pymupdf is not installed - cannot read PDFs (pip install pymupdf)"
     lines, notes = [], []
-    with pdfplumber.open(io.BytesIO(data)) as pdf:
-        for pno, page in enumerate(pdf.pages, 1):
+    try:
+        doc = fitz.open(stream=data, filetype="pdf")
+    except Exception as e:                                        # noqa: BLE001
+        return [], f"could not open PDF ({e.__class__.__name__}: {e})"
+    try:
+        for pno, page in enumerate(doc, 1):
             got = False
-            for table in (page.extract_tables() or []):
-                for row in table:
-                    cells = [_clean(c) for c in row if c]
-                    if len(cells) >= 2:
-                        p = parse_line(" | ".join(cells))
-                        if p:
-                            p["page"] = pno
-                            lines.append(p)
-                            got = True
+            try:
+                tf = page.find_tables()
+                for table in (tf.tables if tf else []):
+                    for row in table.extract():
+                        cells = [_clean(c) for c in row if c]
+                        if len(cells) >= 2:
+                            p = parse_line(" | ".join(cells))
+                            if p:
+                                p["page"] = pno
+                                lines.append(p)
+                                got = True
+            except Exception:                                     # noqa: BLE001
+                pass  # table detection is a bonus, not required - fall through
             if not got:
-                txt = page.extract_text() or ""
+                txt = page.get_text() or ""
                 if txt.strip():
                     for p in from_text(txt):
                         p["page"] = pno
                         lines.append(p)
                     got = True
             if not got:
-                ocr, note = _ocr_image(page.to_image(resolution=220).original)
+                pix = page.get_pixmap(dpi=220)
+                ocr, note = _ocr_array(_pixmap_to_array(pix))
                 if note:
                     notes.append(f"page {pno}: {note}")
                 for p in from_text(ocr):
                     p["page"] = pno
                     p["ocr"] = True
                     lines.append(p)
+    finally:
+        doc.close()
     return lines, "; ".join(notes)
-
-
-def _ocr_image(pil_image):
-    try:
-        import pytesseract
-    except ImportError:
-        return "", "pytesseract not installed"
-    cmd = os.environ.get("TESSERACT_EXE")
-    if cmd:
-        pytesseract.pytesseract.tesseract_cmd = cmd
-    else:
-        for p in (r"C:\Program Files\Tesseract-OCR\tesseract.exe",
-                  r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe"):
-            if os.path.exists(p):
-                pytesseract.pytesseract.tesseract_cmd = p
-                break
-    try:
-        return pytesseract.image_to_string(pil_image), ""
-    except Exception as e:                                        # noqa: BLE001
-        return "", f"OCR unavailable ({e.__class__.__name__}) - install Tesseract-OCR"
 
 
 def from_image(data):
     try:
+        import numpy as np
         from PIL import Image
     except ImportError:
         return [], "Pillow not installed"
-    txt, note = _ocr_image(Image.open(io.BytesIO(data)))
+    img = Image.open(io.BytesIO(data)).convert("RGB")
+    txt, note = _ocr_array(np.array(img))
     lines = from_text(txt)
     for p in lines:
         p["ocr"] = True

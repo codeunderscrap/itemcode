@@ -1,0 +1,28 @@
+# Item Code Studio - extra dependencies beyond the Python standard library.
+#
+# Until 7 August 2026 this project deliberately ran with no pip-installable
+# OCR/PDF stack (Tesseract-OCR was an external, optional binary). That
+# constraint changed: target desktop machines now have internet and admin
+# rights, so the PDF/OCR stack is a real pip install instead. See
+# agents/CONTRACTS.md's house rule 1 changelog note for the full reasoning.
+#
+#   pip install -r requirements.txt
+#
+rapidfuzz
+openpyxl
+requests
+
+# PDF text/table extraction (digital PDFs)
+pymupdf
+
+# OCR (scanned PDFs, photographed invoices). Pinned to the classic,
+# widely-deployed 2.x line on purpose: paddleocr 3.x + paddlepaddle 3.x's
+# new PIR/oneDNN inference backend threw a NotImplementedError on CPU-only
+# Windows during testing here (7 August 2026) — a real, reproducible bug,
+# not a one-off. 2.x's classic PaddleOCR().ocr() API is what's wired into
+# core/ingest.py. Models download once on first real OCR call and are then
+# cached under the user's profile (~/.paddleocr) — expect the first scan on
+# a fresh machine to be slow (internet required that once), every one after
+# that fast and fully offline.
+paddlepaddle==2.6.2
+paddleocr==2.9.1

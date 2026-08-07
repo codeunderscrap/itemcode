@@ -186,8 +186,20 @@ data/itemcode.db     single source of truth (safe to copy while running — WAL 
 exports/             generated workbooks
 ```
 
-## Optional
+## Dependencies
 
-* **Tesseract-OCR** — needed only for scanned/photographed invoices.
-  Install it, or point `TESSERACT_EXE` at the executable. Its absence never
-  breaks anything else.
+```bash
+pip install -r requirements.txt
+```
+
+Standard library plus `rapidfuzz`, `openpyxl`, `requests`, and — as of
+7 August 2026 — `pymupdf` (digital PDF text/tables) and `paddleocr` +
+`paddlepaddle` (OCR for scanned PDFs and photographed invoices), replacing
+the old `pdfplumber`/`pytesseract`/external-Tesseract stack. This assumes
+internet + admin rights on the machine, a deliberate change from the
+project's original "no pip install" constraint — see
+`agents/CONTRACTS.md`'s house rule 1. PaddleOCR's models download once on
+first real OCR use and are cached under the user's profile afterwards; if
+`pymupdf`/`paddleocr` aren't installed, invoice text/table extraction and
+OCR degrade to a plain-English note per file rather than crashing the
+upload — everything else keeps working.

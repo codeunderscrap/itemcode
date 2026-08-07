@@ -4,18 +4,34 @@
  * restyles the existing app pages here (agents/CONTRACTS.md §9, house rule 7,
  * and agents/AGENT_0_FOUNDATION.md "Do not restyle the existing pages").
  *
+ * Values below are pulled directly from the live ATT_Platform reference
+ * (attplatfrom.onrender.com), both themes, via its own computed CSS custom
+ * properties — not eyeballed off a screenshot. Confirmed 7 August 2026.
+ * Two things worth knowing if this drifts again later:
+ *   - the reference keeps --good/--warn/--bad IDENTICAL across both themes;
+ *     only the neutrals (navy/panel/text/border) and the two accents
+ *     (teal/steel) shift between dark and light.
+ *   - dark mode already matched the original hand-set values exactly
+ *     (house rule 7's hexes were right); light mode's teal/steel were the
+ *     values that needed correcting — the reference uses a darker, more
+ *     saturated teal/steel in light mode for contrast against white, not
+ *     the same brand teal darkened uniformly.
+ *
  * Default (dark) is the MiniMines brand palette. A light variant is provided
  * under [data-theme='light'] for pages that want to offer a toggle; nothing
  * currently switches it automatically.
  */
 :root{
-  --mm-navy:   #001b2e;   /* app background */
-  --mm-panel:  #0f2e45;   /* cards, rails */
-  --mm-teal:   #04aed1;   /* brand accent */
-  --mm-steel:  #3b6e93;   /* secondary accent / links */
-  --mm-border: #294962;
-  --mm-text:   #eaf2f7;
-  --mm-dim:    #9db4c4;   /* secondary text */
+  --mm-navy:       #001b2e;   /* app background */
+  --mm-panel:      #0f2e45;   /* cards, rails */
+  --mm-panel-light:#15364d;   /* a step up from --mm-panel - nested panels, table stripes */
+  --mm-teal:       #04aed1;   /* brand accent */
+  --mm-accent:     #4c9eaf;   /* secondary accent - links, focus rings, less shouty than teal */
+  --mm-steel:      #3b6e93;   /* tertiary accent */
+  --mm-border:     #294962;
+  --mm-text:       #eaf2f7;
+  --mm-dim:        #9db4c4;   /* secondary text */
+  --mm-grey:       #7f8c9b;   /* tertiary text, placeholders */
 
   --mm-good: #27ae60;
   --mm-warn: #f39c12;
@@ -33,15 +49,20 @@
 }
 
 [data-theme='light']{
-  --mm-navy:   #f4f7fa;
-  --mm-panel:  #ffffff;
-  --mm-teal:   #04aed1;
-  --mm-steel:  #3b6e93;
-  --mm-border: #d7e2ea;
-  --mm-text:   #0c202f;
-  --mm-dim:    #5c7181;
+  --mm-navy:       #f4f7f9;
+  --mm-panel:      #ffffff;
+  --mm-panel-light:#eef2f5;
+  --mm-teal:       #0384a1;
+  --mm-accent:     #3a7a8a;
+  --mm-steel:      #507b99;
+  --mm-border:     #d0dae3;
+  --mm-text:       #1a2c3a;
+  --mm-dim:        #556c80;
+  --mm-grey:       #7f8c9b;
 
-  --mm-good: #1e8449;
-  --mm-warn: #d68910;
-  --mm-bad:  #c0392b;
+  /* Identical to dark mode on purpose - the reference platform does not
+     shift status colours between themes, only the neutrals/accents above. */
+  --mm-good: #27ae60;
+  --mm-warn: #f39c12;
+  --mm-bad:  #e74c3c;
 }

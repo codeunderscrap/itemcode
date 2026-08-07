@@ -1,19 +1,28 @@
+/* This app shell (index.html's Create/Item master/Dictionary/Decoder/
+ * Activity screens) originally shipped its own generic dark-blue palette,
+ * separate from web/theme.css's MiniMines tokens - only the newer pages
+ * built during the parallel-agent session (public, login, settings) ever
+ * consumed --mm-*. Rewired 7 August 2026 so every --bg/--panel/etc. name
+ * below is an alias onto the real brand token instead of its own hardcoded
+ * hex - the whole app now follows theme.css (and, through it, whatever
+ * data-theme the document root carries) automatically, with no rule below
+ * needing to change. Names are kept as-is on purpose: ~600 lines below
+ * reference --bg/--tx/--acc/etc. directly, and renaming them throughout
+ * would be a much larger, riskier diff for the same visual result.
+ */
 :root{
-  --bg:#0f1216; --panel:#161b22; --panel2:#1c222b; --line:#262e3a;
-  --tx:#e6edf3; --tx2:#9aa7b6; --tx3:#6b7885;
-  --acc:#4c8dff; --acc2:#2f6fe0;
-  --ok:#3fb950; --warn:#d29922; --bad:#f85149; --new:#a371f7;
-  --seg1:#4c8dff; --seg2:#3fb950; --seg3:#d29922; --seg4:#f778ba; --seg5:#a371f7;
-  --r:10px; --mono:"JetBrains Mono","Cascadia Mono",Consolas,monospace;
-}
-@media (prefers-color-scheme:light){
-  :root{--bg:#f4f6f9;--panel:#fff;--panel2:#f7f9fc;--line:#e2e7ef;
-        --tx:#131a24;--tx2:#5a6675;--tx3:#8b97a6;}
+  --bg:var(--mm-navy); --panel:var(--mm-panel); --panel2:var(--mm-panel-light);
+  --line:var(--mm-border);
+  --tx:var(--mm-text); --tx2:var(--mm-dim); --tx3:var(--mm-grey);
+  --acc:var(--mm-teal); --acc2:var(--mm-accent);
+  --ok:var(--mm-good); --warn:var(--mm-warn); --bad:var(--mm-bad); --new:#a371f7;
+  --seg1:var(--mm-teal); --seg2:var(--mm-good); --seg3:var(--mm-warn); --seg4:#f778ba; --seg5:#a371f7;
+  --r:var(--mm-radius); --mono:"JetBrains Mono","Cascadia Mono",Consolas,monospace;
 }
 *{box-sizing:border-box}
 html,body{height:100%}
 body{margin:0;display:flex;background:var(--bg);color:var(--tx);
-  font:14px/1.5 "Segoe UI",Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  font:14px/1.5 var(--mm-font);-webkit-font-smoothing:antialiased}
 
 /* ───────────────────────────────────────────────────────────── rail */
 .rail{width:216px;flex:0 0 216px;background:var(--panel);border-right:1px solid var(--line);

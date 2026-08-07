@@ -3,16 +3,21 @@ Item Code Studio - local Windows installer (Agent H, agents/AGENT_H_DEPLOY.md ta
 
 Copies the app to a per-user folder (no admin rights needed), writes a
 config.json with the ledger pointed at a server ("client" mode) and NO
-secret of any kind, creates a Start Menu + Desktop shortcut, and checks for
-Python and (optionally) Tesseract, degrading gracefully rather than failing
-the install if either is missing.
+secret of any kind, creates a Start Menu + Desktop shortcut, and installs
+the app's Python dependencies from requirements.txt (pymupdf, paddleocr,
+etc.) - degrading gracefully with a clear warning, never failing the whole
+install, if that step can't complete.
 
     powershell -ExecutionPolicy Bypass -File install\install.ps1 `
         -ServerUrl "https://items.example.com"
 
 Run it from inside a checked-out copy of the repo (it copies ITS OWN parent
-folder as the source). No internet access is required or used - nothing is
-downloaded, nothing is `pip install`ed (agents/CONTRACTS.md house rule 1).
+folder as the source). Target machines are now assumed to have internet and
+admin rights, a deliberate change (7 August 2026) from this project's
+original "no pip install" constraint - see agents/CONTRACTS.md house rule 1
+for the full reasoning. If that assumption is wrong for a given machine,
+this step warns and continues; the app still runs, just without OCR/PDF
+extraction until requirements.txt is installed by hand.
 
 WHAT "client" MODE MEANS TODAY, HONESTLY: core/tier.py's three-tier
 resolver is fully built and unit-tested (see HANDOVER.md), but the small
@@ -65,22 +70,26 @@ if (-not $python) {
 $verOut = & $python --version 2>&1
 Write-Ok "$verOut ($python)"
 
-# ------------------------------------------------------------- 2. Tesseract
-# Optional. OCR degrades without it; nothing else breaks - never fail the
-# install over this (agents/AGENT_H_DEPLOY.md: "If Tesseract is absent, say
-# so - OCR degrades, nothing else breaks").
-Write-Step "Checking for Tesseract OCR (optional)"
-$tesseract = Get-Command tesseract -ErrorAction SilentlyContinue
-if (-not $tesseract) {
-    $guess = "C:\Program Files\Tesseract-OCR\tesseract.exe"
-    if (Test-Path $guess) { $tesseract = @{Source = $guess} }
-}
-if ($tesseract) {
-    Write-Ok "found at $($tesseract.Source)"
-} else {
-    Write-Warn2 "Tesseract not found. Scanned/photographed invoices will not OCR;"
-    Write-Warn2 "everything else (typed text, PDFs with a text layer, decoding, search) still works."
-    Write-Warn2 "Install from https://github.com/UB-Mannheim/tesseract/wiki later if wanted - no reinstall needed."
+# --------------------------------------------------------- 2. dependencies
+# pymupdf (PDF text/tables) + paddleocr/paddlepaddle (OCR) replace the old
+# optional external Tesseract-OCR binary. Same "degrade, don't fail" policy
+# as before, just via pip instead of a system installer: a failure here is
+# a warning, not an install-stopping error - the app still runs and typed
+# text / text-layer PDFs / decoding / search all still work without it.
+Write-Step "Installing Python dependencies (pymupdf, paddleocr - internet required)"
+try {
+    $reqFile = Join-Path $RepoRoot "requirements.txt"
+    & $python -m pip install -q -r $reqFile 2>&1 | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Ok "requirements.txt installed"
+    } else {
+        throw "pip exited with code $LASTEXITCODE"
+    }
+} catch {
+    Write-Warn2 "could not install requirements.txt ($_)."
+    Write-Warn2 "Scanned/photographed invoices and PDF extraction will not work;"
+    Write-Warn2 "everything else (typed text, decoding, search) still works."
+    Write-Warn2 "Retry later with: pip install -r requirements.txt"
 }
 
 # ------------------------------------------------------------------ 3. copy
@@ -94,7 +103,7 @@ New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 # is building it (planning docs, source workbooks, the seeded dev database,
 # test suite, the installer's own source).
 $include = @("server.py", "manage.py", "run.bat", "seed.py", "README.md",
-             "core", "routes", "web")
+             "requirements.txt", "core", "routes", "web")
 foreach ($item in $include) {
     $src = Join-Path $RepoRoot $item
     if (-not (Test-Path $src)) { continue }

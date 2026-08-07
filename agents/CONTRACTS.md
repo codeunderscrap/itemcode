@@ -338,6 +338,18 @@ created in ERPNext **one at a time, on Submit**, never in bulk.
 1. **Python standard library only**, plus what is already installed:
    `rapidfuzz`, `openpyxl`, `pdfplumber`, `pytesseract`, `requests`. **Do not
    `pip install`** — there is no network for it and users have no admin rights.
+
+   > **Superseded 7 August 2026, by Anuraag directly.** Target desktop
+   > machines now have internet and admin rights; `pip install -r
+   > requirements.txt` is expected and part of `install/install.ps1`.
+   > `pdfplumber`/`pytesseract` (and the external Tesseract-OCR binary they
+   > needed) are replaced by `pymupdf` (digital PDF text/tables) and
+   > `paddleocr`/`paddlepaddle` (OCR), wired into `core/ingest.py`. This is
+   > the one exception in this file's history — a direct, real-time
+   > instruction from the project owner, not a judgement call by an agent —
+   > recorded here rather than silently edited so the original constraint
+   > and the reason it changed both stay visible. Everything else in this
+   > rule (no other new dependency without asking) still stands.
 2. **Never delete or rewrite another agent's file.** If you need a change there,
    write it in your handover note instead.
 3. **Do not commit a secret.** Not in `config.json`, not in a test, not in a
