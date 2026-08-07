@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Item Code Studio</title>
+<link rel="stylesheet" href="/theme.css">
+<link rel="stylesheet" href="/public.css">
+</head>
+<body>
+
+<header class="pub-head">
+  <div class="pub-logo"><img src="/assets/minimines-logo.svg" alt="MiniMines"></div>
+  <div class="pub-title">MiniMines<small>Item Code Studio</small></div>
+  <span class="grow"></span>
+  <a class="pub-login" href="/login.html">Log in</a>
+</header>
+
+<main class="pub">
+  <div class="pub-split">
+
+    <!-- ═══════════════════════════════════════════════ DECODE A CODE ═══ -->
+    <section class="pub-panel">
+      <h2>Decode a code</h2>
+      <div class="pub-body">
+        <div class="pub-row">
+          <input class="pub-input" id="decIn" placeholder="e.g. RMBS0010206100007"
+                 spellcheck="false" autocomplete="off">
+          <button class="pub-btn" id="decGo">Decode</button>
+        </div>
+        <div id="decOut">
+          <div class="dec-empty">Type or paste any item code to see what it means.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════ FIND AN ITEM ═ -->
+    <section class="pub-panel">
+      <div class="pub-tabs">
+        <button class="pub-tab on" data-tab="items">Find an item</button>
+        <button class="pub-tab" data-tab="dict">Dictionary</button>
+      </div>
+      <div class="pub-body" id="tab-items">
+        <input class="pub-input" id="dirQ" placeholder="search code, name or description…"
+               spellcheck="false" autocomplete="off">
+        <div id="dirOut"><div class="dir-empty">Loading…</div></div>
+        <div class="pub-pager" id="dirPager"></div>
+        <div class="dict-bridge">
+          <button class="pub-link" id="toDict">browse the dictionary →</button>
+        </div>
+      </div>
+      <div class="pub-body hide" id="tab-dict">
+        <input class="pub-input" id="dictQ" placeholder="search groups…"
+               spellcheck="false" autocomplete="off">
+        <div id="dictOut"><div class="dir-empty">Loading…</div></div>
+        <div class="pub-pager" id="dictPager"></div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="pub-foot">Read-only. To create or edit item codes, log in.</div>
+</main>
+
+<div class="pub-modal" id="pubModal">
+  <div class="pub-sheet">
+    <button class="pub-close" id="pubClose">&times;</button>
+    <div id="pubModalBody"></div>
+  </div>
+</div>
+
+<script src="/public.js"></script>
+</body>
+</html>

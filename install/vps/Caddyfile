@@ -1,0 +1,44 @@
+# Caddy reverse proxy — Agent H (agents/AGENT_H_DEPLOY.md task 5).
+#
+# Caddy gets HTTPS mandatory / HTTP-redirects-to-HTTPS / HSTS for free and
+# correct by default (automatic Let's Encrypt certificate, auto-renewal, no
+# certbot cron job to maintain) — that's the whole reason it's the choice
+# here rather than nginx+certbot: fewer moving parts on a box nobody is
+# watching around the clock. Vendor-neutral: this runs on any plain Linux
+# box with a public IP and a domain pointed at it — no cloud-specific
+# feature is used anywhere in this file.
+#
+# Replace items.example.com before use — CONTRACTS.md task 5 says "Confirm
+# with Anuraag which host and domain before you provision anything"; this
+# repo does not yet have a real one, so nothing has been deployed against
+# this file (see HANDOVER.md).
+#
+# Install:
+#   sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
+#   curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+#   curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+#   sudo apt update && sudo apt install -y caddy
+#   sudo cp Caddyfile /etc/caddy/Caddyfile
+#   sudo systemctl reload caddy
+
+items.example.com {
+    # Automatic HTTPS + HTTP->HTTPS redirect + a real certificate — all
+    # default Caddy behaviour, nothing to configure. HSTS is set explicitly
+    # below because Caddy does not enable it by default (unlike the
+    # redirect/cert, which are automatic).
+    header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    header X-Content-Type-Options "nosniff"
+    header X-Frame-Options "DENY"
+
+    reverse_proxy 127.0.0.1:8756 {
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Real-IP {remote_host}
+    }
+
+    encode gzip
+
+    log {
+        output file /var/log/caddy/itemcodestudio-access.log
+        format json
+    }
+}

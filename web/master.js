@@ -1,0 +1,286 @@
+/* Item Code Studio — item master, versions, revert & activity (Agent F).
+ *
+ * Loaded after app.js (index.html), and relies on its globals: $, $$, esc,
+ * api, post, toast, modal, closeModal, BOOT, state. `loadMaster` and
+ * `loadActivity` are what the nav dispatcher in app.js calls by name.
+ *
+ * Everything here is behind login already (index.html only renders once
+ * app.js's loadMe() confirms a session), but every /api/v1 call the server
+ * receives is re-checked with require_session regardless — hiding this
+ * script is not the security boundary, routes/master.py's guard is.
+ */
+
+/* ─────────────────────────────────────────────────────── cascade state */
+const mstate = {
+  page: 1, head: '', sub: '', group: '', groupOptions: [],
+  acUser: '', acCode: '', acFrom: '', acTo: '',
+};
+
+function fillSelect(sel, opts, placeholder) {
+  sel.innerHTML = `<option value="">${placeholder}</option>` +
+    opts.map(o => `<option value="${o.id}">${esc(o.label)}</option>`).join('');
+}
+
+function populateHeadOptions() {
+  const sel = $('#mHead');
+  fillSelect(sel, (BOOT.heads || []).map(h => ({ id: h.id, label: h.name })), 'any head');
+  sel.value = mstate.head;
+}
+
+function populateSubOptions() {
+  const sel = $('#mSub');
+  const subs = (BOOT.subheads || []).filter(s => !mstate.head || String(s.head_id) === String(mstate.head));
+  fillSelect(sel, subs.map(s => ({ id: s.id, label: `${s.head_name} / ${s.name}` })), 'any sub-head');
+  sel.value = mstate.sub;
+}
+
+async function populateGroupOptions() {
+  const sel = $('#mGroup');
+  if (!mstate.sub) {
+    mstate.groupOptions = [];
+    fillSelect(sel, [], 'any group');
+    return;
+  }
+  // Group browsing is Agent A's public read endpoint — the same list the
+  // Dictionary tab uses — so this cascade never re-derives the taxonomy,
+  // only filters it.
+  const gs = await api('/api/groups?limit=999&sub_id=' + encodeURIComponent(mstate.sub));
+  mstate.groupOptions = gs;
+  fillSelect(sel, gs.map(g => ({ id: g.id, label: `${g.name} (${g.prefix})` })), 'any group');
+  sel.value = mstate.group;
+}
+
+/* ─────────────────────────────────────────────────────────────── list */
+async function loadMaster() {
+  if (!$('#mHead').children.length || $('#mHead').children.length === 1) {
+    populateHeadOptions();
+    populateSubOptions();
+  }
+  const params = {
+    q: $('#mq').value, status: $('#mstatus').value,
+    undecodable: $('#mundec').checked ? '1' : '', page: mstate.page, size: 60,
+  };
+  if (mstate.head) params.head_id = mstate.head;
+  if (mstate.sub) params.subhead_id = mstate.sub;
+  if (mstate.group) params.group_id = mstate.group;
+  const q = new URLSearchParams(params);
+  const d = await api('/api/v1/item?' + q);
+  $('#mTotal').textContent = `${d.total.toLocaleString()} items`;
+  $('#mPage').textContent = `page ${d.page} of ${Math.max(1, Math.ceil(d.total / d.size))}`;
+  $('#mTable tbody').innerHTML = d.rows.map(r => `<tr>
+    <td><code>${esc(r.code)}</code></td>
+    <td>${esc(r.name)}</td>
+    <td>${esc(r.hname || '–')}<br><span class="muted">${esc(r.sname || '')}</span></td>
+    <td>${esc(r.gname || '')}${r.group_id ? '' : '<span class="muted">unmapped</span>'}</td>
+    <td>${[r.v1, r.v2, r.v3, r.v4].filter(Boolean).map(esc).join(' · ') || '<span class="muted">–</span>'}</td>
+    <td>${esc(r.vv || '–')}</td><td>${esc(r.uom || '')}</td><td>${esc(r.hsn || '')}</td>
+    <td><span class="pill ${r.status === 'in_erp' ? 'erp' : ''}">${r.status === 'in_erp' ? 'in ERPNext' : esc(r.status)}</span>
+      ${r.decodable ? '' : '<span class="pill dr">stale code</span>'}</td>
+    <td class="num muted">${r.version_no || 1}</td>
+    <td><button class="ghost sm" data-edit="${esc(r.code)}">edit</button></td></tr>`).join('')
+    || `<tr><td colspan="11" class="muted" style="padding:22px;text-align:center">no items match</td></tr>`;
+  $$('[data-edit]').forEach(b => b.onclick = () => openItemModal(b.dataset.edit));
+}
+
+['mq', 'mstatus', 'mundec'].forEach(id => $('#' + id) && $('#' + id).addEventListener('input', () => {
+  mstate.page = 1; loadMaster();
+}));
+$('#mHead') && ($('#mHead').onchange = () => {
+  mstate.head = $('#mHead').value; mstate.sub = ''; mstate.group = '';
+  populateSubOptions(); populateGroupOptions(); mstate.page = 1; loadMaster();
+});
+$('#mSub') && ($('#mSub').onchange = () => {
+  mstate.sub = $('#mSub').value; mstate.group = '';
+  populateGroupOptions().then(loadMaster);
+  mstate.page = 1;
+});
+$('#mGroup') && ($('#mGroup').onchange = () => {
+  mstate.group = $('#mGroup').value; mstate.page = 1; loadMaster();
+});
+$('#mPrev') && ($('#mPrev').onclick = () => { if (mstate.page > 1) { mstate.page--; loadMaster(); } });
+$('#mNext') && ($('#mNext').onclick = () => { mstate.page++; loadMaster(); });
+
+$('#btnExport') && ($('#btnExport').onclick = async () => {
+  toast('Building workbook…');
+  const d = await api('/api/v1/export');
+  toast(`Exported ${d.file}`, 'ok');
+  window.location = '/api/v1/download/' + encodeURIComponent(d.file);
+});
+
+/* ──────────────────────────────────────────────────── item edit modal */
+const EDIT_FIELDS = [
+  ['name', 'Item name'], ['description', 'Description'], ['uom', 'UoM'],
+  ['alt_uom', 'Alternate UoM'], ['hsn', 'HSN / SAC'], ['tax', 'Tax template'],
+  ['status', 'Status'],
+];
+
+async function openItemModal(code) {
+  const d = await api('/api/v1/item/' + encodeURIComponent(code));
+  const it = d.item;
+  renderItemModal(it, 'edit');
+}
+
+function renderItemModal(it, tab) {
+  const frozen = it.frozen_effective;
+  const classCascade = `${esc(it.hname || '–')} → ${esc(it.sname || '–')} → ${esc(it.gname || '–')}`;
+  const specLine = (it.specs || []).filter(s => s.label)
+    .map(s => `${esc(s.label)} <b>${esc(s.value || '—')}</b>`).join(' · ') || 'no specifications on this group';
+
+  modal(`
+    <h3><code style="font-size:15px">${esc(it.code)}</code></h3>
+    <div class="sub">${classCascade} &nbsp;·&nbsp; ${specLine}</div>
+    ${frozen ? `<div class="note" style="margin:0 0 12px">This code is live in ERPNext — it is frozen.
+      Field edits still save; the code itself can never change.</div>` : ''}
+    <div class="tabs" style="margin:0 0 12px">
+      <button class="tab ${tab === 'edit' ? 'on' : ''}" data-mtab="edit">Edit</button>
+      <button class="tab ${tab === 'history' ? 'on' : ''}" data-mtab="history">History (v${it.version_count || 1})</button>
+    </div>
+    <div id="mtBody"></div>
+    <div class="row"><button class="ghost" id="mClose">Close</button></div>`);
+
+  $('#mClose').onclick = closeModal;
+  $$('[data-mtab]').forEach(b => b.onclick = () => renderItemModal(it, b.dataset.mtab));
+
+  if (tab === 'edit') renderEditTab(it);
+  else renderHistoryTab(it);
+}
+
+function renderEditTab(it) {
+  $('#mtBody').innerHTML = `
+    <div class="slots">
+      ${EDIT_FIELDS.map(([k, l]) => k === 'status'
+        ? `<div class="slot"><label>${l}</label>
+            <select id="e_${k}">
+              ${['draft', 'confirmed', 'in_erp'].map(v =>
+                `<option value="${v}" ${it[k] === v ? 'selected' : ''}>${v === 'in_erp' ? 'live in ERPNext' : v}</option>`).join('')}
+            </select><span class="cc"></span></div>`
+        : `<div class="slot"><label>${l}</label><input id="e_${k}" value="${esc(it[k] || '')}"><span class="cc"></span></div>`
+      ).join('')}
+    </div>
+    <div class="sub">The code, its head/sub-head/group and its four spec slots are never editable
+      here — that classification is what the code encodes. Use the Dictionary screen's move/merge
+      if an item is sitting under the wrong group.</div>
+    <div class="row"><button class="primary" id="eSave">Save</button></div>`;
+
+  $('#eSave').onclick = async () => {
+    const body = {};
+    EDIT_FIELDS.forEach(([k]) => body[k] = $('#e_' + k).value);
+    try {
+      const d = await post(`/api/v1/item/${encodeURIComponent(it.code)}/update`, body);
+      if (!d.changed) { toast('Nothing changed', ''); return; }
+      toast(`Saved as version ${d.version} — code unchanged`, 'ok');
+      closeModal(); loadMaster();
+    } catch (e) { toast(e.message, 'err'); }
+  };
+}
+
+async function renderHistoryTab(it) {
+  $('#mtBody').innerHTML = `<div class="empty" style="padding:24px"><b>Loading history…</b></div>`;
+  const d = await api('/api/v1/versions?code=' + encodeURIComponent(it.code));
+  $('#mtBody').innerHTML = `
+    <div class="verlist">${d.versions.map(v => verRow(v, d.frozen, it.code)).join('')}</div>`;
+  $$('[data-revert]', $('#mtBody')).forEach(b => b.onclick = () => doRevert(it.code, +b.dataset.revert, it));
+}
+
+function verRow(v, frozen, code) {
+  const diffHtml = v.diff.length
+    ? `<div class="difflist">${v.diff.map(f =>
+        `<div><b>${esc(f.field)}</b>: ${esc(f.before ?? '—')} <span class="ar">→</span> ${esc(f.after ?? '—')}</div>`).join('')}</div>`
+    : '<div class="muted" style="padding:6px 0">no fields recorded as different from the version before</div>';
+  return `<div class="verrow">
+    <div class="verhead">
+      <b>v${v.version_no}</b>
+      <span class="muted">${esc((v.changed_at || '').replace('T', ' '))} · ${esc(v.changed_by)}</span>
+      <span class="grow"></span>
+      <button class="ghost sm" data-revert="${v.version_no}">Revert to this version</button>
+    </div>
+    <div class="muted" style="padding:2px 0 6px">${esc(v.summary || '')}</div>
+    ${diffHtml}
+  </div>`;
+}
+
+async function doRevert(code, versionNo, itemForModal) {
+  if (!confirm(`Revert ${code} to version ${versionNo}? This never deletes later versions — it adds a new one.`)) return;
+  try {
+    const d = await post('/api/v1/revert', { code, version_no: versionNo });
+    toast(d.message, d.skipped_frozen && d.skipped_frozen.length ? '' : 'ok');
+    loadMaster();
+    if (itemForModal) {
+      const fresh = await api('/api/v1/item/' + encodeURIComponent(code));
+      renderItemModal(fresh.item, 'history');
+    }
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+/* ═══════════════════════════════════════════════════════════ ACTIVITY */
+function fmtDiff(diff) {
+  if (!diff || !diff.length) return '<span class="muted">–</span>';
+  return diff.slice(0, 4).map(f =>
+    `<div><b>${esc(f.field)}</b>: ${esc(f.before ?? '—')} <span class="ar">→</span> ${esc(f.after ?? '—')}</div>`
+  ).join('') + (diff.length > 4 ? `<div class="muted">+${diff.length - 4} more</div>` : '');
+}
+
+function matchedByBadge(mb) {
+  if (!mb) return '';
+  return `<span class="layer ${esc(mb)}">${esc(mb)}</span>`;
+}
+
+async function loadActivity() {
+  const params = {};
+  mstate.acUser = $('#acUser').value.trim();
+  mstate.acCode = $('#acCode').value.trim().toUpperCase();
+  mstate.acFrom = $('#acFrom').value;
+  mstate.acTo = $('#acTo').value;
+  if (mstate.acUser) params.user = mstate.acUser;
+  if (mstate.acCode) params.code = mstate.acCode;
+  if (mstate.acFrom) params.from = mstate.acFrom + 'T00:00:00';
+  if (mstate.acTo) params.to = mstate.acTo + 'T23:59:59';
+  params.limit = 150;
+
+  const [act, mp, vac] = await Promise.all([
+    api('/api/v1/audit?' + new URLSearchParams(params)),
+    api('/api/mappings'),
+    api('/api/v1/vacancies'),
+  ]);
+
+  $('#acTotal').textContent = `${act.total.toLocaleString()} event${act.total === 1 ? '' : 's'}`;
+  $('#acTable tbody').innerHTML = act.events.map(e => `<tr>
+      <td class="muted">${esc((e.ts || '').replace('T', ' '))}</td>
+      <td>${esc(e.user)}</td>
+      <td>${e.item_code ? `<code>${esc(e.item_code)}</code>` : '<span class="muted">–</span>'}
+        ${e.item_name ? `<br><span class="muted">${esc(e.item_name)}</span>` : ''}</td>
+      <td>${e.kind === 'version' ? fmtDiff(e.diff) : `<span class="muted">${esc(e.action)}${e.item_code ? '' : ''}</span>`}</td>
+      <td>${matchedByBadge(e.matched_by)}</td>
+      <td>${e.revertable ? `<button class="ghost sm" data-act-revert="${esc(e.item_code)}" data-act-v="${e.version_no}">Revert</button>` : ''}</td>
+    </tr>`).join('') || '<tr><td colspan="6" class="muted" style="padding:20px;text-align:center">no activity matches these filters</td></tr>';
+  $$('[data-act-revert]').forEach(b => b.onclick = () =>
+    doRevert(b.dataset.actRevert, +b.dataset.actV, null).then(loadActivity));
+
+  $('#cmTable tbody').innerHTML = mp.map(r => `<tr><td><code>${esc(r.old_code)}</code></td>
+    <td><code>${esc(r.new_code)}</code></td><td>${esc(r.reason)}</td><td>${esc(r.user)}</td></tr>`).join('')
+    || '<tr><td colspan="4" class="muted">nothing re-issued yet</td></tr>';
+
+  // core.codes.list_vacancies (Agent D) shape: level, scope, prefix, number,
+  // freed_by, freed_at — already identical for group- and item-level, so no
+  // per-level branching is needed here. "number" is the next free number the
+  // NEXT arrival gets (queue-claim, lowest-first), never "reserved for".
+  $('#vTable tbody').innerHTML = (vac.groups || []).map(r => `<tr>
+      <td><code>${esc(r.prefix || '')}${esc(r.number)}</code></td>
+      <td>${esc(r.scope || '')}</td>
+      <td>${esc(r.freed_by || '–')}</td>
+      <td class="muted">${esc((r.freed_at || '').replace('T', ' '))}</td></tr>`).join('')
+    || '<tr><td colspan="4" class="muted">no free numbers waiting — the next group starts a new one</td></tr>';
+
+  $('#viTable tbody').innerHTML = (vac.items || []).map(r => `<tr>
+      <td><code>${esc(r.prefix || '')}${esc(r.number)}</code></td>
+      <td>${esc(r.scope || '')}</td>
+      <td>${esc(r.freed_by || '–')}</td>
+      <td class="muted">${esc((r.freed_at || '').replace('T', ' '))}</td></tr>`).join('')
+    || '<tr><td colspan="4" class="muted">no free item positions waiting</td></tr>';
+}
+
+['acUser', 'acCode', 'acFrom', 'acTo'].forEach(id => $('#' + id) && $('#' + id).addEventListener('input', loadActivity));
+$('#acClear') && ($('#acClear').onclick = () => {
+  ['acUser', 'acCode', 'acFrom', 'acTo'].forEach(id => $('#' + id).value = '');
+  loadActivity();
+});

@@ -1,0 +1,51 @@
+{
+  "app_name": "Item Code Studio",
+  "host": "0.0.0.0",
+  "port": 8756,
+  "tls": false,
+  "_tls_comment": "true only once a real certificate terminates HTTPS in front of this process (agents/CONTRACTS.md section 2, tier 1 VPS). Controls whether core/auth.py sets Secure on the session cookie - leave false for the tier-2 local server, which runs over plain HTTP by design (agents/AGENT_H_DEPLOY.md).",
+  "match_threshold": 60,
+  "sources": {
+    "item_master": "C:\\Users\\Anura\\Downloads\\_Item master .xlsx",
+    "dictionary_sheet": "final Item_Code_Master",
+    "erp_item_list": "C:\\Users\\Anura\\Downloads\\Item.xlsx",
+    "spec_dictionary": "C:\\Users\\Anura\\Downloads\\Item code specification.xlsx"
+  },
+  "llm": {
+    "provider": "none",
+    "_provider_options": [
+      "none",
+      "anthropic",
+      "gemini",
+      "openai",
+      "ollama"
+    ],
+    "model": "claude-haiku-4-5-20251001",
+    "api_key": "",
+    "base_url": ""
+  },
+  "erpnext": {
+    "enabled": false,
+    "dry_run": true,
+    "base_url": "https://minimines-uat.m.frappe.cloud",
+    "username": "intern@m-mines.com",
+    "password": ""
+  },
+  "ledger": {
+    "mode": "local_server",
+    "_mode_options": [
+      "server",
+      "local_server",
+      "client"
+    ],
+    "server_url": "",
+    "local_url": "",
+    "lease_size": 10
+  },
+  "backup": {
+    "_comment": "path is a folder Google Drive for Desktop already syncs on the tier-2 machine - set by Anuraag, no credentials involved (agents/AGENT_H_DEPLOY.md task 7)",
+    "drive_folder": "",
+    "daily_keep": 14,
+    "weekly_keep": 8
+  }
+}

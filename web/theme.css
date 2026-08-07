@@ -1,0 +1,47 @@
+/* MiniMines brand theme — CSS variables only, no rules.
+ *
+ * Agent 0 owns this file. Agent A extends it for the public face; nobody
+ * restyles the existing app pages here (agents/CONTRACTS.md §9, house rule 7,
+ * and agents/AGENT_0_FOUNDATION.md "Do not restyle the existing pages").
+ *
+ * Default (dark) is the MiniMines brand palette. A light variant is provided
+ * under [data-theme='light'] for pages that want to offer a toggle; nothing
+ * currently switches it automatically.
+ */
+:root{
+  --mm-navy:   #001b2e;   /* app background */
+  --mm-panel:  #0f2e45;   /* cards, rails */
+  --mm-teal:   #04aed1;   /* brand accent */
+  --mm-steel:  #3b6e93;   /* secondary accent / links */
+  --mm-border: #294962;
+  --mm-text:   #eaf2f7;
+  --mm-dim:    #9db4c4;   /* secondary text */
+
+  --mm-good: #27ae60;
+  --mm-warn: #f39c12;
+  --mm-bad:  #e74c3c;
+
+  --mm-font: "Barlow", "Segoe UI", system-ui, sans-serif;
+  --mm-radius: 10px;
+
+  /* Fixed brand navy, same value in both themes. The logo artwork
+     (web/assets/minimines-logo.svg) is white-only, so its backdrop must
+     stay dark even when --mm-navy itself flips light under
+     [data-theme='light'] below. Added by Agent A for the public page
+     header; house rule 7 in CONTRACTS.md fixes this exact hex. */
+  --mm-navy-fixed: #001b2e;
+}
+
+[data-theme='light']{
+  --mm-navy:   #f4f7fa;
+  --mm-panel:  #ffffff;
+  --mm-teal:   #04aed1;
+  --mm-steel:  #3b6e93;
+  --mm-border: #d7e2ea;
+  --mm-text:   #0c202f;
+  --mm-dim:    #5c7181;
+
+  --mm-good: #1e8449;
+  --mm-warn: #d68910;
+  --mm-bad:  #c0392b;
+}

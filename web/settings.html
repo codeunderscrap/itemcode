@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Settings — Item Code Studio</title>
+<link rel="stylesheet" href="/theme.css">
+<style>
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--mm-navy);color:var(--mm-text);
+    font:15px/1.55 var(--mm-font);-webkit-font-smoothing:antialiased}
+  header{display:flex;align-items:center;gap:14px;padding:16px 26px;
+    border-bottom:1px solid var(--mm-border);background:var(--mm-panel)}
+  header img{height:26px}
+  header b{font-size:15px}
+  header a{margin-left:auto;color:var(--mm-dim);font-size:13px;text-decoration:none}
+  header a:hover{color:var(--mm-teal)}
+  main{max-width:720px;margin:0 auto;padding:28px 22px 60px}
+  h1{font-size:21px;margin:0 0 4px}
+  p.lead{color:var(--mm-dim);margin:0 0 26px;font-size:13.5px}
+  .banner{border-radius:8px;padding:12px 14px;margin-bottom:22px;font-size:13.5px;display:none}
+  .banner.show{display:block}
+  .banner.fuzzy{background:color-mix(in srgb,var(--mm-warn) 16%,transparent);color:var(--mm-warn)}
+  .banner.ready{background:color-mix(in srgb,var(--mm-good) 14%,transparent);color:var(--mm-good)}
+  .card{background:var(--mm-panel);border:1px solid var(--mm-border);border-radius:var(--mm-radius);
+    padding:22px 22px 24px;margin-bottom:20px}
+  .card h2{font-size:14px;margin:0 0 4px;text-transform:uppercase;letter-spacing:.5px;color:var(--mm-dim)}
+  .card p.hint{margin:0 0 16px;color:var(--mm-dim);font-size:12.5px}
+  .row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+  .field{flex:1;min-width:180px}
+  label{display:block;font-size:12.5px;color:var(--mm-dim);margin-bottom:5px}
+  input,select{width:100%;font:inherit;background:var(--mm-navy);color:var(--mm-text);
+    border:1px solid var(--mm-border);border-radius:7px;padding:9px 11px;outline:none}
+  input:focus,select:focus{border-color:var(--mm-teal)}
+  .toggle{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .toggle input{width:auto}
+  .btnrow{display:flex;gap:10px;align-items:center;margin-top:6px;flex-wrap:wrap}
+  button{font:inherit;cursor:pointer;border-radius:7px;padding:9px 16px;border:1px solid transparent}
+  button.primary{background:var(--mm-teal);color:#00202c;font-weight:600}
+  button.primary:hover{filter:brightness(1.08)}
+  button.ghost{background:transparent;border-color:var(--mm-border);color:var(--mm-dim)}
+  button.ghost:hover{color:var(--mm-text);border-color:var(--mm-steel)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .testresult{font-size:13px;margin-left:4px}
+  .testresult.ok{color:var(--mm-good)}
+  .testresult.bad{color:var(--mm-bad)}
+  .savemsg{font-size:13px;color:var(--mm-good)}
+  .locked{padding:60px 20px;text-align:center;color:var(--mm-dim)}
+</style>
+</head>
+<body>
+
+<header>
+  <img src="/assets/minimines-logo.svg" alt="">
+  <b>Settings</b>
+  <a href="/index.html">&larr; back to the app</a>
+</header>
+
+<main id="main">
+  <div class="locked" id="loading">loading…</div>
+</main>
+
+<script src="/settings.js"></script>
+</body>
+</html>

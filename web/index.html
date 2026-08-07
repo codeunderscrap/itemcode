@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Item Code Studio</title>
+<link rel="stylesheet" href="/theme.css">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<aside class="rail">
+  <div class="brand">
+    <div class="logo">IC</div>
+    <div><b>Item Code Studio</b><span id="seedInfo">loading…</span></div>
+  </div>
+  <nav>
+    <button class="nav on"  data-view="create">Create codes</button>
+    <button class="nav"     data-view="master">Item master</button>
+    <button class="nav"     data-view="dict">Dictionary</button>
+    <button class="nav"     data-view="decode">Decoder</button>
+    <button class="nav"     data-view="activity">Activity</button>
+  </nav>
+  <div class="railfoot">
+    <button class="who" id="whoBtn">signed in as <b id="whoName">…</b></button>
+    <div class="erpchip" id="erpChip">ERPNext: …</div>
+  </div>
+</aside>
+
+<main>
+
+<!-- ══════════════════════════════════════════════ CREATE ══════════════ -->
+<section class="view" id="v-create">
+  <header>
+    <h1>Create codes</h1>
+    <p>Paste a line, or drop an invoice. Nothing is written until you submit.</p>
+  </header>
+
+  <div class="split">
+    <div class="panel intake">
+      <div class="tabs">
+        <button class="tab on" data-intake="text">Type / paste</button>
+        <button class="tab"    data-intake="file">Invoice file</button>
+      </div>
+
+      <div class="intake-body" id="in-text">
+        <textarea id="rawText" rows="9" spellcheck="false"
+          placeholder="One item per line, for example:&#10;Odonil Lavender air freshener 48 g&#10;M-Seal epoxy sealant 100gm&#10;Cylindrical NMC battery pack 32700 make LG"></textarea>
+        <div class="row">
+          <button class="primary" id="readText">Read lines</button>
+          <button class="ghost" id="demoFill">Load demo lines</button>
+        </div>
+      </div>
+
+      <div class="intake-body hide" id="in-file">
+        <div class="drop" id="drop">
+          <b>Drop an invoice here</b>
+          <span>PDF · scan / photo · Excel · CSV · text<br>scanned pages go through OCR</span>
+          <input type="file" id="file" hidden
+                 accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,.bmp,.webp,.xlsx,.xlsm,.csv,.txt">
+        </div>
+        <div id="fileNote" class="note hide"></div>
+      </div>
+
+      <div class="lines hide" id="lineBox">
+        <div class="lines-head"><b id="lineCount">0 lines</b>
+          <button class="primary sm" id="resolveAll">Resolve all</button></div>
+        <div id="lineList"></div>
+      </div>
+    </div>
+
+    <div class="panel results">
+      <div class="empty" id="resEmpty">
+        <div class="bigmark">⌘</div>
+        <b>Resolution results appear here</b>
+        <span>Each line runs three phases: does the code exist → does the taxonomy
+        exist → what are the specifications.</span>
+      </div>
+      <div id="resList"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════ MASTER ══════════════ -->
+<section class="view hide" id="v-master">
+  <header>
+    <h1>Item master</h1>
+    <p>The working master. Edits here change fields, never codes.</p>
+    <div class="hactions">
+      <button class="ghost" id="btnExport">Export to Excel</button>
+    </div>
+  </header>
+  <div class="panel">
+    <div class="toolbar">
+      <input id="mq" placeholder="search code, name or description…">
+      <select id="mHead"><option value="">any head</option></select>
+      <select id="mSub"><option value="">any sub-head</option></select>
+      <select id="mGroup"><option value="">any group</option></select>
+      <select id="mstatus">
+        <option value="">any status</option>
+        <option value="in_erp">live in ERPNext</option>
+        <option value="confirmed">confirmed, not in ERP</option>
+        <option value="draft">draft</option>
+      </select>
+      <label class="chk"><input type="checkbox" id="mundec"> only codes that no longer decode</label>
+      <span class="grow"></span>
+      <span class="muted" id="mTotal"></span>
+    </div>
+    <div class="tablewrap"><table id="mTable">
+      <thead><tr>
+        <th>Code</th><th>Item name</th><th>Head / Sub-head</th><th>Group</th>
+        <th>Specifications</th><th>Vendor</th><th>UoM</th><th>HSN</th><th>Status</th><th class="num">Ver.</th><th></th>
+      </tr></thead><tbody></tbody>
+    </table></div>
+    <div class="pager"><button class="ghost sm" id="mPrev">‹ prev</button>
+      <span id="mPage"></span><button class="ghost sm" id="mNext">next ›</button></div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ DICTIONARY ══════════════ -->
+<section class="view hide" id="v-dict">
+  <header>
+    <h1>Dictionary</h1>
+    <p>Heads, sub-heads, groups and their specification slots — the logic behind every code.</p>
+    <div class="hactions"><button class="ghost" id="btnNewGroup">New group</button></div>
+  </header>
+  <div class="split dict">
+    <div class="panel">
+      <div class="toolbar"><input id="gq" placeholder="search groups…"></div>
+      <div class="tablewrap tall"><table id="gTable">
+        <thead><tr><th>Prefix</th><th>Group</th><th>Head / Sub-head</th>
+          <th class="num">Specs</th><th class="num">Items</th></tr></thead><tbody></tbody>
+      </table></div>
+    </div>
+    <div class="panel" id="gDetail">
+      <div class="empty"><div class="bigmark">◧</div><b>Pick a group</b>
+        <span>Its specification slots, values and the items using it show here.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════════════════════════════════════ DECODER ══════════════ -->
+<section class="view hide" id="v-decode">
+  <header><h1>Decoder</h1><p>Paste any code and read it back in plain words.</p></header>
+  <div class="panel narrow">
+    <div class="toolbar"><input id="dq" placeholder="e.g. RMBS0010206100007" spellcheck="false">
+      <button class="primary" id="dGo">Decode</button></div>
+    <div id="dOut"></div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════ ACTIVITY ══════════════ -->
+<section class="view hide" id="v-activity">
+  <header><h1>Activity</h1>
+    <p>Field-level before and after for every save, filterable by person, item and date — with
+      Revert on each entry. Which codes were re-issued and which numbers come next follow below.</p>
+  </header>
+
+  <div class="panel">
+    <div class="toolbar">
+      <input id="acUser" placeholder="filter by person…">
+      <input id="acCode" placeholder="filter by item code…" spellcheck="false" style="font-family:var(--mono)">
+      <input id="acFrom" type="date" title="from">
+      <input id="acTo" type="date" title="to">
+      <button class="ghost sm" id="acClear">clear</button>
+      <span class="grow"></span>
+      <span class="muted" id="acTotal"></span>
+    </div>
+    <div class="tablewrap tall"><table id="acTable">
+      <thead><tr><th>When</th><th>Who</th><th>Item</th><th>What changed</th><th>Matched by</th><th></th></tr></thead>
+      <tbody></tbody></table></div>
+  </div>
+
+  <div class="split" style="margin-top:16px">
+    <div class="panel">
+      <div class="phead">Re-issued codes</div>
+      <div class="tablewrap"><table id="cmTable">
+        <thead><tr><th>Old</th><th>New</th><th>Reason</th><th>By</th></tr></thead>
+        <tbody></tbody></table></div>
+    </div>
+    <div class="panel">
+      <div class="phead">Next free group number</div>
+      <div class="tablewrap"><table id="vTable">
+        <thead><tr><th>Next</th><th>Sub-head</th><th>Freed by</th><th>When</th></tr></thead>
+        <tbody></tbody></table></div>
+      <div class="phead">Next free item position</div>
+      <div class="tablewrap"><table id="viTable">
+        <thead><tr><th>Next</th><th>Group</th><th>Freed by</th><th>When</th></tr></thead>
+        <tbody></tbody></table></div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<div class="toast" id="toast"></div>
+<div class="modal hide" id="modal"><div class="sheet"><div id="modalBody"></div></div></div>
+
+<script src="/app.js"></script>
+<script src="/master.js"></script>
+<script src="/create.js"></script>
+</body>
+</html>

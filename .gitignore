@@ -1,0 +1,25 @@
+# Real business data - never committed. This is MiniMines' actual item
+# ledger; seed.py --rebuild regenerates it from the source workbooks in
+# config.json -> sources, which are themselves personal-machine paths and
+# also excluded.
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/*.db-journal
+data/dict_cache.json
+exports/*.xlsx
+
+# Generated / runtime
+__pycache__/
+*.pyc
+*.pyo
+server.log
+*.log
+~$*.xlsx
+tests/_concurrent_test.db*
+
+# Local machine / editor
+.vscode/
+.idea/
+*.swp
+Thumbs.db

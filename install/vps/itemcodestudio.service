@@ -1,0 +1,41 @@
+# systemd unit — Agent H (agents/AGENT_H_DEPLOY.md task 5).
+#
+# Runs the app as a dedicated, non-root user; restarts on crash; starts on
+# boot. The app itself listens on 127.0.0.1 only — Caddy (Caddyfile in this
+# folder) is what's actually reachable from the public internet on :443,
+# terminating TLS and proxying to this port. Nothing here binds to 0.0.0.0.
+#
+# Install:
+#   sudo cp itemcodestudio.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now itemcodestudio
+#
+# Logs: journalctl -u itemcodestudio -f
+
+[Unit]
+Description=Item Code Studio (item coding ledger — tier 1)
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=itemcode
+Group=itemcode
+WorkingDirectory=/opt/itemcodestudio
+Environment=ICS_SKIP_BOOTSTRAP=0
+ExecStart=/usr/bin/python3 /opt/itemcodestudio/server.py --no-browser
+Restart=on-failure
+RestartSec=3
+
+# Hardening — this process holds the whole ledger and every ERPNext/LLM
+# secret it proxies for; treat it like it matters.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/itemcodestudio/data /opt/itemcodestudio/exports
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target

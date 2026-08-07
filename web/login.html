@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in — Item Code Studio</title>
+<link rel="stylesheet" href="/theme.css">
+<style>
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;display:flex;align-items:center;justify-content:center;
+    background:var(--mm-navy);color:var(--mm-text);
+    font:15px/1.5 var(--mm-font);-webkit-font-smoothing:antialiased;padding:20px}
+  .card{width:100%;max-width:380px;background:var(--mm-panel);
+    border:1px solid var(--mm-border);border-radius:var(--mm-radius);
+    padding:32px 30px;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+  .brand{display:flex;align-items:center;gap:10px;margin-bottom:26px}
+  .brand img{height:30px;width:auto}
+  .brand b{font-size:16px;letter-spacing:.2px}
+  h1{margin:0 0 4px;font-size:19px}
+  p.sub{margin:0 0 22px;color:var(--mm-dim);font-size:13px}
+  label{display:block;font-size:12.5px;color:var(--mm-dim);margin:14px 0 6px}
+  input{width:100%;font:inherit;background:var(--mm-navy);color:var(--mm-text);
+    border:1px solid var(--mm-border);border-radius:7px;padding:10px 12px;outline:none}
+  input:focus{border-color:var(--mm-teal)}
+  button{width:100%;margin-top:22px;font:inherit;font-weight:600;cursor:pointer;
+    background:var(--mm-teal);color:#00202c;border:none;border-radius:7px;
+    padding:11px 14px;transition:.12s}
+  button:hover{filter:brightness(1.08)}
+  button:disabled{opacity:.55;cursor:not-allowed}
+  .msg{margin-top:16px;font-size:13px;border-radius:7px;padding:9px 11px;display:none}
+  .msg.err{display:block;background:color-mix(in srgb,var(--mm-bad) 14%,transparent);color:var(--mm-bad)}
+  .msg.info{display:block;background:color-mix(in srgb,var(--mm-steel) 20%,transparent);color:var(--mm-dim)}
+  .msg.ok{display:block;background:color-mix(in srgb,var(--mm-good) 14%,transparent);color:var(--mm-good)}
+  .back{display:block;text-align:center;margin-top:18px;font-size:12.5px;color:var(--mm-dim);text-decoration:none}
+  .back:hover{color:var(--mm-teal)}
+  .hide{display:none!important}
+  fieldset{border:none;padding:0;margin:0}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="brand"><img src="/assets/minimines-logo.svg" alt=""><b>Item Code Studio</b></div>
+
+  <div id="loginPane">
+    <h1>Sign in</h1>
+    <p class="sub">Accounts are issued by an admin. There is no sign-up.</p>
+    <div class="msg" id="loginMsg"></div>
+    <form id="loginForm" autocomplete="on">
+      <fieldset id="loginFields">
+        <label for="u">Username</label>
+        <input id="u" name="username" autocomplete="username" required>
+        <label for="p">Password</label>
+        <input id="p" name="password" type="password" autocomplete="current-password" required>
+        <button type="submit" id="loginBtn">Sign in</button>
+      </fieldset>
+    </form>
+  </div>
+
+  <div id="changePane" class="hide">
+    <h1>Set a new password</h1>
+    <p class="sub">This account must set its own password before continuing.</p>
+    <div class="msg" id="changeMsg"></div>
+    <form id="changeForm">
+      <fieldset>
+        <label for="np1">New password</label>
+        <input id="np1" type="password" minlength="8" required autocomplete="new-password">
+        <label for="np2">Confirm new password</label>
+        <input id="np2" type="password" minlength="8" required autocomplete="new-password">
+        <button type="submit" id="changeBtn">Set password and continue</button>
+      </fieldset>
+    </form>
+  </div>
+
+  <a class="back" href="/public.html">&larr; back to the public page</a>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+
+function showMsg(el, text, kind) {
+  el.textContent = text;
+  el.className = 'msg ' + kind;
+}
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, {
+    ...opts,
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
+  });
+  const d = await r.json().catch(() => ({ ok: false, error: { message: 'bad response from server' } }));
+  return { status: r.status, ...d };
+}
+
+// A logged-in visitor doesn't need this page again.
+(async () => {
+  const params = new URLSearchParams(location.search);
+  if (params.get('expired') === '1') {
+    showMsg($('#loginMsg'), 'Your session ended. Sign in again to continue.', 'info');
+  }
+  const me = await api('/api/v1/auth/me');
+  if (me.ok && me.user) {
+    if (me.must_change_password) { showChange(); }
+    else { location.href = '/index.html'; }
+  }
+})();
+
+let pendingPassword = null; // held only in memory, only long enough to complete a forced change
+
+function showChange() {
+  $('#loginPane').classList.add('hide');
+  $('#changePane').classList.remove('hide');
+}
+
+$('#loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = $('#loginBtn');
+  btn.disabled = true;
+  $('#loginMsg').className = 'msg';
+  const username = $('#u').value.trim();
+  const password = $('#p').value;
+  const d = await api('/api/v1/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) });
+  btn.disabled = false;
+  if (!d.ok) {
+    const msg = d.status === 429
+      ? 'Too many attempts. Wait a few minutes and try again.'
+      : (d.error && d.error.message) || 'Sign in failed.';
+    showMsg($('#loginMsg'), msg, 'err');
+    return;
+  }
+  if (d.must_change_password) {
+    pendingPassword = password;
+    showChange();
+    return;
+  }
+  location.href = '/index.html';
+});
+
+$('#changeForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = $('#changeBtn');
+  const np1 = $('#np1').value, np2 = $('#np2').value;
+  $('#changeMsg').className = 'msg';
+  if (np1 !== np2) { showMsg($('#changeMsg'), 'Passwords do not match.', 'err'); return; }
+  if (np1.length < 8) { showMsg($('#changeMsg'), 'Use at least 8 characters.', 'err'); return; }
+  if (!pendingPassword) {
+    // arrived here from an already-established session (e.g. reload) rather
+    // than a fresh login - ask for the current password explicitly instead
+    pendingPassword = prompt('Confirm your current password:') || '';
+  }
+  btn.disabled = true;
+  const d = await api('/api/v1/auth/password', { method: 'POST', body: JSON.stringify({ old: pendingPassword, new: np1 }) });
+  btn.disabled = false;
+  if (!d.ok) {
+    showMsg($('#changeMsg'), (d.error && d.error.message) || 'Could not set password.', 'err');
+    return;
+  }
+  showMsg($('#changeMsg'), 'Password set.', 'ok');
+  setTimeout(() => { location.href = '/index.html'; }, 600);
+});
+</script>
+</body>
+</html>
