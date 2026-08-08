@@ -8,8 +8,8 @@
 const $ = s => document.querySelector(s);
 const MASK = '••••••••';
 
-const PROVIDER_LABELS = { none: 'None (fuzzy only)', anthropic: 'Anthropic', gemini: 'Google Gemini', openai: 'OpenAI', ollama: 'Ollama (local)', grok: 'Grok (xAI)' };
-const PROVIDER_MODEL_HINT = { none: '', anthropic: 'claude-haiku-4-5-20251001', gemini: 'gemini-2.0-flash', openai: 'gpt-4o-mini', ollama: 'llama3.1', grok: 'grok-4' };
+const PROVIDER_LABELS = { none: 'None (fuzzy only)', anthropic: 'Anthropic', gemini: 'Google Gemini', openai: 'OpenAI', ollama: 'Ollama (local)', grok: 'Grok (xAI)', groq: 'Groq' };
+const PROVIDER_MODEL_HINT = { none: '', anthropic: 'claude-haiku-4-5-20251001', gemini: 'gemini-2.0-flash', openai: 'gpt-4o-mini', ollama: 'llama3.1', grok: 'grok-4', groq: 'llama-3.3-70b-versatile' };
 
 async function api(path, opts = {}) {
   const r = await fetch(path, {

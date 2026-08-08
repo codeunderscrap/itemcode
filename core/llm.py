@@ -1,7 +1,7 @@
 """Provider-neutral LLM client for the resolver.
 
-One interface, five backends (`anthropic`, `gemini`, `openai`, `ollama`,
-`grok`) plus `none`. Provider, key, model and base_url are read from the **settings
+One interface, six backends (`anthropic`, `gemini`, `openai`, `ollama`,
+`grok`, `groq`) plus `none`. Provider, key, model and base_url are read from the **settings
 table** (`llm.provider`, `llm.api_key`, `llm.model`, `llm.base_url`) - the
 screen Agent B builds writes them there. `config.json`'s `llm` block is
 consulted only as a last-resort default (e.g. before Settings has ever been
@@ -118,9 +118,16 @@ def cache_put(con, key, question, answer, provider):
 
 # ------------------------------------------------------------------- http
 def _request(url, payload, headers, timeout=TIMEOUT):
+    # A real User-Agent, not urllib's default "Python-urllib/3.x" - several
+    # providers (Groq confirmed live, 7 August 2026: a bare Cloudflare 403
+    # "error code: 1010" with a valid key and correct payload, gone the
+    # moment a normal-looking UA was added) sit behind bot protection that
+    # blocks the default one outright, unrelated to auth or the request body.
     req = urllib.request.Request(
         url, data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json", **headers})
+        headers={"Content-Type": "application/json",
+                 "User-Agent": "Mozilla/5.0 (compatible; ItemCodeStudio/1.0)",
+                 **headers})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read().decode("utf-8"))
 
@@ -210,12 +217,9 @@ def _ollama(c, prompt):
 
 
 def _grok(c, prompt):
-    # xAI's API is OpenAI-compatible (same /chat/completions request and
-    # response shape) - only the base URL and default model differ, so this
-    # is _openai() in every way that matters. Kept as its own function
-    # rather than aliased so the default base_url/model are grok's own and
-    # a future divergence between the two APIs doesn't have to be
-    # untangled from shared code.
+    # xAI's own model. Not to be confused with Groq (below) - different
+    # company, different key format (xAI keys aren't "gsk_"-prefixed),
+    # different default model. Both APIs happen to be OpenAI-compatible.
     base = c["base_url"] or "https://api.x.ai/v1"
     d = _post(f"{base}/chat/completions",
               {"model": c["model"] or "grok-4", "max_tokens": 4000, "temperature": 0,
@@ -227,8 +231,26 @@ def _grok(c, prompt):
         raise _Unavailable("bad_json")
 
 
+def _groq(c, prompt):
+    # Groq (groq.com) - LPU-hosted inference for open models (Llama,
+    # Kimi, etc, whatever c["model"] names), OpenAI-compatible API, keys
+    # prefixed "gsk_". Easy to mix up with xAI's Grok by name alone - kept
+    # as a fully separate backend/provider rather than reusing _grok's
+    # defaults, since the endpoint, key format and model catalogue are
+    # all different even though the request/response shape matches.
+    base = c["base_url"] or "https://api.groq.com/openai/v1"
+    d = _post(f"{base}/chat/completions",
+              {"model": c["model"] or "llama-3.3-70b-versatile", "max_tokens": 4000,
+               "temperature": 0, "messages": [{"role": "user", "content": prompt}]},
+              {"Authorization": f"Bearer {c['api_key']}"})
+    try:
+        return d["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError):
+        raise _Unavailable("bad_json")
+
+
 _BACKENDS = {"anthropic": _anthropic, "openai": _openai, "gemini": _gemini,
-             "ollama": _ollama, "grok": _grok}
+             "ollama": _ollama, "grok": _grok, "groq": _groq}
 
 
 # ------------------------------------------------------------------- ask

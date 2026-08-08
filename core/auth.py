@@ -354,9 +354,34 @@ def test_llm_key(provider, api_key, model):
                 data=json.dumps({"model": model or "llama3.1", "prompt": "hi", "stream": False}).encode(),
                 headers={"content-type": "application/json"},
                 method="POST")
+        elif provider == "grok":
+            req = urllib.request.Request(
+                "https://api.x.ai/v1/chat/completions",
+                data=json.dumps({
+                    "model": model or "grok-4",
+                    "max_tokens": 1,
+                    "messages": [{"role": "user", "content": "hi"}],
+                }).encode(),
+                headers={"Authorization": f"Bearer {api_key}", "content-type": "application/json"},
+                method="POST")
+        elif provider == "groq":
+            req = urllib.request.Request(
+                "https://api.groq.com/openai/v1/chat/completions",
+                data=json.dumps({
+                    "model": model or "llama-3.3-70b-versatile",
+                    "max_tokens": 1,
+                    "messages": [{"role": "user", "content": "hi"}],
+                }).encode(),
+                headers={"Authorization": f"Bearer {api_key}", "content-type": "application/json"},
+                method="POST")
         else:
             return False, "unknown provider"
 
+        # A real User-Agent, not urllib's default "Python-urllib/3.x" -
+        # Groq (confirmed live, 7 August 2026) sits behind Cloudflare bot
+        # protection that returns a bare 403 "error code: 1010" against the
+        # default one, unrelated to the key or payload being wrong.
+        req.add_header("User-Agent", "Mozilla/5.0 (compatible; ItemCodeStudio/1.0)")
         with urllib.request.urlopen(req, timeout=12) as resp:
             resp.read(200)
         return True, None

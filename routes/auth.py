@@ -125,6 +125,7 @@ PROVIDER_MODELS = {
     "openai": "gpt-4o-mini",
     "ollama": "llama3.1",
     "grok": "grok-4",
+    "groq": "llama-3.3-70b-versatile",
 }
 PROVIDERS = set(PROVIDER_MODELS)
 

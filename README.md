@@ -137,7 +137,7 @@ written to concurrently — not a raw file copy.
 | Key | What it does |
 |---|---|
 | `match_threshold` | Fuzzy decides at or above this; the LLM is consulted below it. Default 60. |
-| `llm.provider` | `none` · `anthropic` · `gemini` · `openai` · `ollama` · `grok` — set from the Settings screen, not here, once a real key exists |
+| `llm.provider` | `none` · `anthropic` · `gemini` · `openai` · `ollama` · `grok` · `groq` — set from the Settings screen, not here, once a real key exists |
 | `erpnext.enabled` | Master switch for talking to ERPNext at all |
 | `erpnext.dry_run` | `true` shows the exact payload it would post and writes nothing |
 | `port` | Default 8756 |
