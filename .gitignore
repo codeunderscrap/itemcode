@@ -2,7 +2,7 @@
 # ledger; seed.py --rebuild regenerates it from the source workbooks in
 # config.json -> sources, which are themselves personal-machine paths and
 # also excluded.
-data/*.db
+# data/*.db  <-- commented out to allow pushing the sqlite DB
 data/*.db-wal
 data/*.db-shm
 data/*.db-journal

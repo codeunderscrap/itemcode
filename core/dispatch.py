@@ -187,7 +187,11 @@ def make_handler(web_dir, router):
                         req.user = current_user(req) or "unknown"
                     except Exception:                                 # noqa: BLE001
                         req.user = "unknown"
-                    result = handler(req)
+                    try:
+                        result = handler(req)
+                    finally:
+                        if ctx.con.in_transaction:
+                            ctx.con.rollback()
             except ApiError as e:
                 return self._send(e.status, err(e.code, e.message, e.detail))
             except Exception as e:                                # noqa: BLE001
