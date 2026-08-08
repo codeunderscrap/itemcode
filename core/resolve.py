@@ -161,7 +161,32 @@ def phase1_exists(con, matcher, text, name=None):
 
 
 # ------------------------------------------------------ rules: shortlist + constraints
-def _candidate_groups(con, matcher, text, hints, limit=5):
+# A product's HSN or a service's SAC code (same column on an Indian invoice,
+# same field here - "HSN/SAC") is a controlled vocabulary: two lines coded
+# 995446 are the same category of thing even when their description text
+# reads nothing alike, which happens constantly across vendors and is
+# exactly where name-only matching struggles most (services especially -
+# "Earth work Excavation for Foundation" vs some other contractor's wording
+# for the same line of work share no useful tokens at all). This is
+# corroborating evidence alongside the name score, never a replacement for
+# it - a code can span many genuinely different items, so a bare code match
+# with no name resemblance stays a weak signal, not an override.
+HSN_MATCH_BONUS = 15
+
+
+def _groups_with_hsn(con, hsn):
+    """grp_id -> count of existing items already carrying this exact
+    HSN/SAC code, used as a scoring boost in _candidate_groups. Not a
+    ranking signal on its own - see the note above."""
+    if not hsn:
+        return {}
+    rows = con.execute(
+        "SELECT grp_id, COUNT(*) c FROM item WHERE hsn=? AND grp_id IS NOT NULL "
+        "GROUP BY grp_id", (hsn,)).fetchall()
+    return {r["grp_id"]: r["c"] for r in rows}
+
+
+def _candidate_groups(con, matcher, text, hints, limit=5, hsn=None):
     """The group shortlist, rules-only. `hints.group_id` is the operator
     overriding the machine outright - it collapses the shortlist to that one
     choice and nothing else is asked about it."""
@@ -177,7 +202,20 @@ def _candidate_groups(con, matcher, text, hints, limit=5):
         out += [(n, 0.90) for n in group_exemplars(con, g["id"])]
         return out
 
-    ranked = matcher.rank(text, groups, key=gkey, limit=limit)
+    # Score every group by name first (matcher.rank already does this
+    # internally regardless of `limit` - it only slices the result at the
+    # end - so asking for the full list back costs nothing extra), then
+    # apply the HSN/SAC bonus before taking the top `limit`, so a group an
+    # HSN match found isn't lost to the cut just because its name score
+    # alone wasn't competitive.
+    ranked = matcher.rank(text, groups, key=gkey, limit=len(groups))
+    hsn_groups = _groups_with_hsn(con, hsn)
+    if hsn_groups:
+        ranked = sorted(
+            ((g, min(100, s + HSN_MATCH_BONUS) if g["id"] in hsn_groups else s)
+             for g, s in ranked),
+            key=lambda x: -x[1])
+    ranked = ranked[:limit]
     return [{"group": g, "score": s, "forced": False} for g, s in ranked]
 
 
@@ -252,7 +290,8 @@ def _build_line_context(con, matcher, payload):
         lc["skip_llm"] = True
         return lc
 
-    ranked_groups = _candidate_groups(con, matcher, hints.get("group_text") or probe, hints)
+    ranked_groups = _candidate_groups(con, matcher, hints.get("group_text") or probe, hints,
+                                      hsn=payload.get("hsn"))
     candidates = []
     for cg in ranked_groups:
         g = cg["group"]
