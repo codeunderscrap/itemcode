@@ -76,7 +76,7 @@ _ITEM_SERIAL = re.compile(r"^\s*(\d{1,2})[).|\s]?\s*([A-Za-z].+)$")
 # measure means this is a quantity, not a new item's serial number, no
 # matter what follows it on the line.
 _STARTS_WITH_UOM = re.compile(
-    r"^(?:NOS|PCS?|KGS?|GM|G|LTR|L|ML|MTR|M|SET|BOX|PKT|ROLL|UNITS?|EA)\b", re.I)
+    r"^(?:NOS|PCS?|KGS?|GM|G|LTR|L|ML|MTR|M|SET|BOX|PKT|ROLL|UNITS?|EA|LAYERS?|MM|CM|INCH(?:ES)?|FT|FEET|SQFT|SQM|THK|THICK|DIA|CORE|SQMM|BAGS?|DRUMS?|X)\b", re.I)
 # A line with no letters at all - a bare rate, a tax percentage, a repeated
 # quantity, an amount subtotal - carries a structured value (already pulled
 # separately by QTY_RE/RATE_RE against the full merged blob) but no
@@ -86,7 +86,7 @@ _MOSTLY_NUMERIC = re.compile(r"^[\d,.\s%|\[\]()/:\-]+$")
 # Same idea, but for a bare "8,000 Nos" / "25.00Nos" style fragment, which
 # _MOSTLY_NUMERIC alone doesn't catch because the unit word is letters.
 _BARE_QTY_LINE = re.compile(
-    r"^" + _NUM + r"\s*(?:NOS|PCS?|KGS?|GM|G|LTR|L|ML|MTR|M|SET|BOX|PKT|ROLL|UNITS?|EA)\.?$", re.I)
+    r"^" + _NUM + r"\s*(?:NOS|PCS?|KGS?|GM|G|LTR|L|ML|MTR|M|SET|BOX|PKT|ROLL|UNITS?|EA)[\]\).|,\s]*$", re.I)
 
 
 def _find_table_bounds(lines):
