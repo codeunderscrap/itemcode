@@ -57,12 +57,13 @@ NOISE_LINE = re.compile(
 # even when a single item's description wraps across many separate OCR
 # lines - which it does, constantly.
 _TABLE_HEADER_STRONG = re.compile(
-    r"description\s+of\s+goods|hsn\s*/\s*sac|particulars\s+of\s+goods", re.I)
+    r"description\s+of\s+goods|hsn\s*/\s*sac|particulars\s+of\s+goods|item\s+description|hsn\s+code", re.I)
 _TABLE_HEADER_WEAK = re.compile(
     r"\b(?:quantity|qty|rate|amount|hsn|sac|particulars|description)\b", re.I)
 _TABLE_FOOTER = re.compile(
     r"amount\s+chargeable|chargeable\s*\(?\s*in\s+words|we\s+declare|declare\s+that\s+this\s+invoice|"
     r"computer\s+generated\s+invoice|authorised?\s+signatory|terms\s*&?\s*conditions|"
+    r"tax'?ble|taxable\s+amt|cgst|sgst|igst|cess\s+amt|round\s*off|total\s+inv|tot\s+inv|total\s+amount|"
     r"e\s*\.?\s*&\s*o\s*\.?\s*e|continued\s+to\s+page|subject\s+to\s+.{0,20}jurisdiction", re.I)
 # A new item starts at a small leading serial number - OCR renders the
 # separator after it inconsistently (". ", ") ", "| ", a bare space, or
@@ -135,7 +136,14 @@ def extract_invoice_items(raw_lines):
         # no recognisable table header - safest fallback is the plain
         # per-line filter rather than guessing at a group boundary in
         # genuinely unstructured text.
-        return [p for ln in lines if (p := parse_line(ln))]
+        fallback_items = []
+        for ln in lines:
+            if _TABLE_FOOTER.search(ln):
+                break
+            p = parse_line(ln)
+            if p:
+                fallback_items.append(p)
+        return fallback_items
 
     start, end = bounds
     items, current = [], []
@@ -309,7 +317,12 @@ def from_pdf(data):
                     for row in table.extract():
                         cells = [_clean(c) for c in row if c]
                         if len(cells) >= 2:
-                            p = parse_line(" | ".join(cells))
+                            line_str = " | ".join(cells)
+                            if _TABLE_HEADER_STRONG.search(line_str) or len(_TABLE_HEADER_WEAK.findall(line_str)) >= 2:
+                                continue
+                            if _TABLE_FOOTER.search(line_str):
+                                break
+                            p = parse_line(line_str)
                             if p:
                                 p["page"] = pno
                                 lines.append(p)

@@ -621,9 +621,6 @@ def _assemble_result(con, matcher, lc, decision):
             s["proposed_code"] = nxt
         else:
             slots.append(None)
-            out["blockers"].append(
-                f"Choose a value for '{s['label']}' (spec {s['slot']}) - "
-                "the invoice text did not say.")
 
     vend = None
     v = p3.get("vendor")
