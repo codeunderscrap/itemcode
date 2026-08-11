@@ -426,10 +426,27 @@ async function openGroup(id) {
     </div>
     <div class="tablewrap" style="max-height:220px"><table>
       <thead><tr><th>Code</th><th>Item</th><th>Status</th></tr></thead>
-      <tbody>${g.items.map(i => `<tr><td><code>${esc(i.code)}</code></td><td>${esc(i.name)}</td>
+      <tbody>${g.items.map(i => `<tr class="dict-item-row" data-code="${esc(i.code)}" style="cursor:pointer"><td><code>${esc(i.code)}</code></td><td>${esc(i.name)}</td>
         <td><span class="pill ${i.status === 'in_erp' ? 'erp' : ''}">${esc(i.status)}</span>
         ${i.decodable ? '' : '<span class="pill dr">stale</span>'}</td></tr>`).join('')}</tbody>
     </table></div></div>`;
+
+  $$('.dict-item-row', $('#gDetail')).forEach(tr => {
+    tr.onclick = async () => {
+      try {
+        const d = await api('/api/v1/item/' + encodeURIComponent(tr.dataset.code));
+        if (d.item && typeof renderItemModal === 'function') {
+          renderItemModal(d.item);
+        } else if (!d.item) {
+          toast('Item not found', 'err');
+        } else {
+          toast('Item Master script is not loaded', 'err');
+        }
+      } catch (e) {
+        toast(e.message || 'Failed to load item', 'err');
+      }
+    };
+  });
 
   $$('[data-addval]').forEach(b => b.onclick = async () => {
     const val = prompt('New value:'); if (!val) return;

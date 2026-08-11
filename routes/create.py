@@ -221,7 +221,6 @@ def resolve_preview(req):
         if not sel:
             slots.append(None)
             detail.append({"slot": slot, "label": label, "code": None, "value": None})
-            blockers.append(f"Choose a value for '{label}'.")
             continue
         if isinstance(sel, str) and sel.startswith("new:"):
             code2 = C.next_spec_code(con, g["id"], slot)

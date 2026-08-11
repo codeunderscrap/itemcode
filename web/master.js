@@ -136,9 +136,22 @@ function renderItemModal(it, tab) {
       <button class="tab ${tab === 'history' ? 'on' : ''}" data-mtab="history">History (v${it.version_count || 1})</button>
     </div>
     <div id="mtBody"></div>
-    <div class="row"><button class="ghost" id="mClose">Close</button></div>`);
+    <div class="row">
+      <button class="ghost" id="mClose">Close</button>
+      <button class="ghost" id="mEditGroup">Edit Group in Dictionary</button>
+    </div>`);
 
   $('#mClose').onclick = closeModal;
+  $('#mEditGroup').onclick = () => {
+    closeModal();
+    // Use the nav button to switch to dictionary view
+    document.querySelector('.nav[data-view="dict"]').click();
+    // Open the group in dictionary
+    if (typeof openGroup === 'function') {
+      openGroup(it.group_id);
+    }
+  };
+
   $$('[data-mtab]').forEach(b => b.onclick = () => renderItemModal(it, b.dataset.mtab));
 
   if (tab === 'edit') renderEditTab(it);
