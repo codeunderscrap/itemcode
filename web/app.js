@@ -208,11 +208,10 @@ function card(r, i) {
   const near = r.phase1?.near || [];
 
   const slots = (r.phase3?.slots || []).map(s => {
-    if (!s.label) return `<div class="slot off"><label>slot ${s.slot}</label>
-      <span class="muted">not used by this group</span><span class="cc">–</span></div>`;
+    const label = s.label || `Spec ${s.slot}`;
     const opts = (s.options || []).map(o =>
       `<option value="${o.id}" ${o.id === s.specval_id ? 'selected' : ''}>${esc(o.value)} · ${o.code}</option>`).join('');
-    return `<div class="slot"><label title="${esc(s.label)}">${esc(s.label)}</label>
+    return `<div class="slot"><label title="${esc(label)}">${esc(label)}</label>
       <select data-slot="${s.slot}">
         <option value="">— none —</option>${opts}
         <option value="__new">+ add a new value…</option>
@@ -222,9 +221,10 @@ function card(r, i) {
 
   const v = r.phase3?.vendor;
   const vendorRow = v ? (() => {
+    const vlabel = v.label || "Vendor";
     const opts = (v.options || []).map(o =>
       `<option value="${o.id}" ${o.id === v.specval_id ? 'selected' : ''}>${esc(o.value)} · ${o.code}</option>`).join('');
-    return `<div class="slot"><label>${esc(v.label)}</label>
+    return `<div class="slot"><label>${esc(vlabel)}</label>
       <select data-slot="5"><option value="">— none —</option>${opts}
       <option value="__new">+ add a new vendor…</option></select>
       <span class="cc">${esc(v.code || v.proposed_code || '··')}</span></div>`;
@@ -402,6 +402,7 @@ async function openGroup(id) {
   const labelOf = s => s === 5 ? g.labels.vendor : g.labels[String(s)];
   const cards = [1, 2, 3, 4, 5].map(s => {
     const lbl = labelOf(s), vals = g.specs[String(s)] || [];
+    if (!lbl && !vals.length) return '';
     return `<div class="slotcard"><div class="sh">
         <b>${s === 5 ? 'Vendor' : 'Spec ' + s}</b>
         <span class="muted">${esc(lbl || 'no label set')}</span>
