@@ -582,6 +582,19 @@ def _assemble_result(con, matcher, lc, decision):
             else:
                 p3["vendor"] = {"label": vend_pool["label"], "status": "not named on the invoice line",
                                 "value": None, "code": None}
+    else:
+        labels = hints.get("new_group_labels") or {}
+        for i in range(1, 5):
+            lbl = labels.get(str(i))
+            val = hints.get(f"s{i}")
+            p3["slots"].append({"slot": i, "label": lbl, "status": "match" if val else "undetermined",
+                                "layer": "manual", "matched_by": "manual", "value": val, "code": None, "options": []})
+        vlbl = labels.get("vendor")
+        vval = hints.get("vendor_text")
+        if vlbl or vval:
+            p3["vendor"] = {"label": vlbl or "Vendor", "status": "match" if vval else "undetermined",
+                            "layer": "manual", "matched_by": "manual", "value": vval, "code": None, "options": []}
+
     out["phase3"] = p3
 
     # -------------------------------------------------------- assemble code

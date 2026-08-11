@@ -450,24 +450,29 @@
       <div class="slot"><label>New Group</label><input data-ng="name" data-i="${c.i}" placeholder="name this group" value="${esc(hints.new_group_name || '')}"><span class="cc"></span></div>
       <div class="slot"><label>UoM</label><input data-ng="uom" data-i="${c.i}" placeholder="Nos" value="${esc(c.input.uom || '')}"><span class="cc"></span></div>
       <div class="slot"><label>Spec 1 label</label>
-        <input data-ng="label1" data-i="${c.i}" placeholder="e.g. Type" value="${l1}" style="width:35%; margin-right:5%">
-        <input data-ng="val1" data-i="${c.i}" placeholder="value (e.g. U+2)" value="${esc(hints.s1 || '')}" style="width:50%">
+        <input data-ng="label1" data-i="${c.i}" placeholder="Category (e.g. Type)" value="${l1}" style="width:33%; margin-right:3%">
+        <input data-ng="val1" data-i="${c.i}" placeholder="Value (e.g. U+2)" value="${esc(hints.s1 || '')}" style="width:40%">
+        <span class="cc">${esc(hints.s1 ? "01" : "··")}</span>
       </div>
       <div class="slot"><label>Spec 2 label</label>
-        <input data-ng="label2" data-i="${c.i}" placeholder="e.g. Size" value="${l2}" style="width:35%; margin-right:5%">
-        <input data-ng="val2" data-i="${c.i}" placeholder="value (e.g. 90x90x110)" value="${esc(hints.s2 || '')}" style="width:50%">
+        <input data-ng="label2" data-i="${c.i}" placeholder="Category (e.g. Size)" value="${l2}" style="width:33%; margin-right:3%">
+        <input data-ng="val2" data-i="${c.i}" placeholder="Value (e.g. 90x90)" value="${esc(hints.s2 || '')}" style="width:40%">
+        <span class="cc">${esc(hints.s2 ? "01" : "··")}</span>
       </div>
       <div class="slot"><label>Spec 3 label</label>
-        <input data-ng="label3" data-i="${c.i}" value="${l3}" style="width:35%; margin-right:5%">
-        <input data-ng="val3" data-i="${c.i}" placeholder="value" value="${esc(hints.s3 || '')}" style="width:50%">
+        <input data-ng="label3" data-i="${c.i}" value="${l3}" style="width:33%; margin-right:3%" placeholder="Category">
+        <input data-ng="val3" data-i="${c.i}" placeholder="Value" value="${esc(hints.s3 || '')}" style="width:40%">
+        <span class="cc">${esc(hints.s3 ? "01" : "··")}</span>
       </div>
       <div class="slot"><label>Spec 4 label</label>
-        <input data-ng="label4" data-i="${c.i}" value="${l4}" style="width:35%; margin-right:5%">
-        <input data-ng="val4" data-i="${c.i}" placeholder="value" value="${esc(hints.s4 || '')}" style="width:50%">
+        <input data-ng="label4" data-i="${c.i}" value="${l4}" style="width:33%; margin-right:3%" placeholder="Category">
+        <input data-ng="val4" data-i="${c.i}" placeholder="Value" value="${esc(hints.s4 || '')}" style="width:40%">
+        <span class="cc">${esc(hints.s4 ? "01" : "··")}</span>
       </div>
       <div class="slot"><label>Vendor label</label>
-        <input data-ng="vlabel" data-i="${c.i}" placeholder="blank = no vendor" value="${vl}" style="width:35%; margin-right:5%">
-        <input data-ng="vval" data-i="${c.i}" placeholder="value" value="${esc(hints.vendor_text || '')}" style="width:50%">
+        <input data-ng="vlabel" data-i="${c.i}" placeholder="blank = no vendor" value="${vl}" style="width:33%; margin-right:3%">
+        <input data-ng="vval" data-i="${c.i}" placeholder="Value" value="${esc(hints.vendor_text || '')}" style="width:40%">
+        <span class="cc">${esc(hints.vendor_text ? "00" : "··")}</span>
       </div>
       <div class="slot"><label></label><button class="ghost sm" data-act="apply-newgroup" data-i="${c.i}">Create &amp; use this hierarchy</button><span class="cc"></span></div>
     </div>`;
