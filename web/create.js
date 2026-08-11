@@ -73,6 +73,13 @@
     return HEADS_CACHE;
   }
 
+  let TAX_CACHE = null;
+  async function ensureTaxes() {
+    if (!ERP_ENABLED) return [];
+    if (TAX_CACHE === null) TAX_CACHE = (await getJSON("/api/v1/cascade/taxes")).taxes || [];
+    return TAX_CACHE;
+  }
+
   // ──────────────────────────────────────────────────────────── markup
   function shell() {
     return `
@@ -398,21 +405,32 @@
     }).join("");
 
     let vrow = "";
-    const curV = c.sel.vendor;
     const vopts = c.sel.vendorOptions && c.sel.vendorOptions.length;
-    // Always show Vendor slot if there are options or if they explicitly have a label
-    if (c.sel.labels.vendor || vopts || curV) {
-      const vlabel = c.sel.labels.vendor || "Vendor";
-      const cur = c.sel.vendor;
-      const opts = (c.sel.vendorOptions || []).map((o) => `<option value="${o.id}" ${String(o.id) === String(cur) ? "selected" : ""}>${esc(o.value)} · ${o.code2}</option>`).join("");
-      const newOpt = cur && String(cur).startsWith("new:") ? `<option value="${esc(cur)}" selected>${esc(cur.slice(4))} · new</option>` : "";
-      const vcode = c.previewRes && c.previewRes.vendor ? c.previewRes.vendor.code : null;
-      vrow = `<div class="slot"><label>${esc(vlabel)}</label>
-        <select data-cas-vendor="1" data-i="${c.i}"><option value="">— none —</option>${opts}${newOpt}
-        <option value="__new">+ add a new vendor…</option></select>
-        <span class="cc">${esc(vcode || "··")}</span></div>`;
+    const vlabel = c.sel.labels.vendor || "Vendor";
+    const curV = c.sel.vendor;
+    const voptsHTML = (c.sel.vendorOptions || []).map((o) => `<option value="${o.id}" ${String(o.id) === String(curV) ? "selected" : ""}>${esc(o.value)} · ${o.code2}</option>`).join("");
+    const newVOpt = curV && String(curV).startsWith("new:") ? `<option value="${esc(curV)}" selected>${esc(curV.slice(4))} · new</option>` : "";
+    const vcode = c.previewRes && c.previewRes.vendor ? c.previewRes.vendor.code : null;
+    vrow = `<div class="slot"><label>${esc(vlabel)}</label>
+      <select data-cas-vendor="1" data-i="${c.i}"><option value="">— none —</option>${voptsHTML}${newVOpt}
+      <option value="__new">+ add a new vendor…</option></select>
+      <span class="cc">${esc(vcode || "··")}</span></div>`;
+
+    let trow = "";
+    if (ERP_ENABLED && TAX_CACHE !== null) {
+      const taxes = TAX_CACHE || [];
+      // Auto-select if only 1 option and none is selected yet
+      if (taxes.length === 1 && !c.sel.tax) c.sel.tax = taxes[0];
+      
+      const taxOpts = taxes.map((t) => `<option value="${esc(t)}" ${t === c.sel.tax ? "selected" : ""}>${esc(t)}</option>`).join("");
+      trow = `<div class="slot" style="margin-top:12px; border-top:1px solid var(--mm-b0); padding-top:12px;">
+        <label>Tax Template <span style="color:var(--mm-bad)">*</span></label>
+        <select data-cas-tax="1" data-i="${c.i}">
+          <option value="">— mandatory —</option>${taxOpts}
+        </select><span class="cc"></span></div>`;
     }
-    return `<div class="slots">${rows}${vrow}</div>`;
+
+    return `<div class="slots">${rows}${vrow}${trow}</div>`;
   }
 
   function renderNewGroupForm(c) {
@@ -565,12 +583,14 @@
   async function beginEdit(c) {
     ensureUser();
     await ensureHeads();
+    await ensureTaxes();
     c.editing = true;
     c.previewRes = null;
     c.sel = {
       headId: null, headCode: null, subId: null, subCode: null, subheads: [],
       groupId: null, groupName: null, groupCode3: null, groups: [],
       labels: {}, slots: {}, specOptions: { 1: [], 2: [], 3: [], 4: [] }, vendor: null, vendorOptions: [],
+      tax: c.input.tax || null,
     };
     updateCard(c);
 
@@ -673,6 +693,12 @@
           toast("Finish choosing the group and every specification first", "err");
           c.submitting = false; updateCard(c); return;
         }
+        if (ERP_ENABLED && TAX_CACHE !== null && !c.sel.tax) {
+          toast("Please select an Item Tax Template", "err");
+          c.submitting = false; updateCard(c); return;
+        }
+        
+        c.input.tax = c.sel.tax;
         const { slots, vendor } = buildManualPhase3(c);
         proposal = {
           input: c.input,
@@ -854,13 +880,18 @@
       if (t.dataset.casVendor) {
         if (t.value === "__new") {
           const val = prompt("New vendor / maker name:");
-          if (!val) { t.value = ""; return; }
+          if (!val) { t.value = ""; c.sel.vendor = null; }
+          else {
           c.sel.vendor = "new:" + val;
+          }
         } else {
           c.sel.vendor = t.value || null;
         }
         await previewCard(c);
-        return;
+      }
+      if (t.dataset.casTax) {
+        c.sel.tax = t.value || null;
+        updateCard(c);
       }
       if (t.dataset.quickslot) {
         let val = t.value;

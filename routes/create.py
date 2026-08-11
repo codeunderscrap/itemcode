@@ -353,6 +353,14 @@ def alias_add_v1(req):
     return ok({"learned": True, "scope": scope, "ref_id": int(ref_id), "term": term})
 
 
+def cascade_taxes(req):
+    """GET /api/v1/cascade/taxes - fetches Item Tax Templates from ERPNext"""
+    require_session(req)
+    if not ctx.erp or not ctx.erp.enabled:
+        return ok({"taxes": []})
+    return ok({"taxes": ctx.erp.get_tax_templates(ctx.con)})
+
+
 # ---------------------------------------------------------------- cascade
 def cascade_heads(req):
     require_session(req)
@@ -429,4 +437,5 @@ ROUTES = [
     ("GET", "/api/v1/cascade/subheads", cascade_subheads),
     ("GET", "/api/v1/cascade/groups", cascade_groups),
     ("GET", "/api/v1/cascade/slots", cascade_slots),
+    ("GET", "/api/v1/cascade/taxes", cascade_taxes),
 ]

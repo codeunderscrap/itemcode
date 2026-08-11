@@ -49,6 +49,7 @@ ALLOWED = {
     ("GET", "Item Code Specification"), ("POST", "Item Code Specification"),
     ("GET", "Item Code Vendor"), ("POST", "Item Code Vendor"),
     ("GET", "Item Group"), ("POST", "Item Group"), ("GET", "UOM"), ("GET", "GST HSN Code"),
+    ("GET", "Item Tax Template"),
 }
 
 # The non-doctype "method" endpoints permitted. Nothing else under
@@ -270,6 +271,15 @@ class ERP:
                 return False
             raise
 
+    def get_tax_templates(self, con=None):
+        self.refresh(con)
+        try:
+            self.login()
+            res = self._resource("GET", "Item Tax Template", query="fields=[\"name\"]&limit_page_length=200")
+            return [r["name"] for r in res.get("data", [])]
+        except urllib.error.HTTPError:
+            return []
+
     def _uom_set(self, con=None, force=False):
         vals, ts = self._uom_cache
         if vals is not None and not force and (time.time() - ts) < self._cache_ttl:
@@ -385,7 +395,7 @@ class ERP:
         return {k: v for k, v in (payload or {}).items() if k in allowed}
 
     # ---------------------------------------------------------------- write
-    def create_item(self, code, item_name, item_group, uom="Nos", hsn=None, extra=None, con=None):
+    def create_item(self, code, item_name, item_group, uom="Nos", hsn=None, extra=None, tax_template=None, con=None):
         """The only way an Item is ever created. One at a time, on Submit —
         never in bulk (CONTRACTS.md decision #13). Validates item_group,
         stock_uom and gst_hsn_code before building the payload; refuses a
@@ -429,6 +439,8 @@ class ERP:
         }
         if hsn:
             payload["gst_hsn_code"] = hsn
+        if tax_template:
+            payload["taxes"] = [{"item_tax_template": tax_template}]
         payload.update(self._whitelist(extra, CREATE_FIELDS))
 
         if self.dry_run:
