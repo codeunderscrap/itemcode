@@ -386,8 +386,7 @@
     if (!c.sel.groupId || c.sel.groupId === "__newgroup") return "";
     const codeFor = (slot) => (c.previewRes && (c.previewRes.slots || []).find((s) => s.slot === slot) || {}).code;
     const rows = [1, 2, 3, 4].map((slot) => {
-      const label = c.sel.labels[String(slot)];
-      if (!label) return "";
+      const label = c.sel.labels[String(slot)] || `Spec ${slot}`;
       const cur = c.sel.slots[slot];
       const opts = (c.sel.specOptions[slot] || []).map((o) => `<option value="${o.id}" ${String(o.id) === String(cur) ? "selected" : ""}>${esc(o.value)} · ${o.code2}</option>`).join("");
       const newOpt = cur && String(cur).startsWith("new:") ? `<option value="${esc(cur)}" selected>${esc(cur.slice(4))} · new</option>` : "";
@@ -399,8 +398,11 @@
     }).join("");
 
     let vrow = "";
-    const vlabel = c.sel.labels.vendor;
-    if (vlabel) {
+    const curV = c.sel.vendor;
+    const vopts = c.sel.vendorOptions && c.sel.vendorOptions.length;
+    // Always show Vendor slot if there are options or if they explicitly have a label
+    if (c.sel.labels.vendor || vopts || curV) {
+      const vlabel = c.sel.labels.vendor || "Vendor";
       const cur = c.sel.vendor;
       const opts = (c.sel.vendorOptions || []).map((o) => `<option value="${o.id}" ${String(o.id) === String(cur) ? "selected" : ""}>${esc(o.value)} · ${o.code2}</option>`).join("");
       const newOpt = cur && String(cur).startsWith("new:") ? `<option value="${esc(cur)}" selected>${esc(cur.slice(4))} · new</option>` : "";
