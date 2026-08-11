@@ -37,11 +37,11 @@ MAKER_RE = re.compile(
     r"(?:\s+[A-Z][A-Za-z0-9.&\-]{1,20})?)", re.I)
 
 NOISE_LINE = re.compile(
-    r"^\s*(?:tax\s+invoice|invoice\s*(?:no|date)|gstin|pan\b|state\s+code|bill(?:ing)?\s+to|ship(?:ping)?\s+to|"
+    r"^\s*(?:tax\s+invoice|invoice\s*(?:no|date|id)|date:|dispatch\s+from:|gstin|pan\b|state\s+code|bill(?:ed|ing)?\s+to|ship(?:ped|ping)?\s+to|"
     r"terms|e-?way|declaration|subject\s+to|for\s+[A-Z].{0,40}$|authorised|signatory|"
     r"total|sub\s*total|grand\s*total|cgst|sgst|igst|round\s*off|amount\s+in\s+words|"
-    r"bank|ifsc|a/?c\s*no|page\s+\d+|s\.?\s*no\.?$|hsn/?sac$|description$|"
-    r"tel:|fax:|attendee:|receiver:|billing\s+number:|email:|address:|reg\.?\s*no|reg\.?\s*date|payment\s+term|payment\s+method|beneficiary|swift\s+code|company\s+name|details\s+of\s+receiver|details\s+of\s+consignee)", re.I)
+    r"bank|ifsc|a/?c\s*no|page\s+\d+|s\.?\s*no\.?$|hsn/?sac$|description[:$]|"
+    r"tel:|fax:|attendee:|receiver:|billing\s+number:|email:|address:|reg\.?\s*no|reg\.?\s*date|payment\s+term|payment\s+method|beneficiary|swift\s+code|company\s+name|details\s+of\s+receiver|details\s+of\s+consignee|conference|registration\s*number|ltd\s*$|anhui|bkchcnbj|pre\s*payment|area,|global\s+decision|room\s+\d+|cocktail)", re.I)
 
 _DOC_TYPE_NON_INVOICE = re.compile(
     r"\b(?:proforma\s+invoice|quotation|estimate|purchase\s+order)\b", re.I)
