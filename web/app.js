@@ -415,13 +415,17 @@ async function openGroup(id) {
 
   $('#gDetail').innerHTML = `<div class="gd">
     <h2>${esc(g.name)} <span class="pfx">${esc(g.prefix)}</span></h2>
-    <div class="crumbs">${esc(g.head_name)} → ${esc(g.sub_name)} → group ${esc(g.code3)}
-      · ${g.items.length} item(s)</div>
+    <div class="crumbs">
+      ${esc(g.head_name)} <span class="ghost sm edit-head" style="cursor:pointer;opacity:0.6;font-size:12px;margin:0 4px" title="Rename Head">(edit)</span> → 
+      ${esc(g.sub_name)} <span class="ghost sm edit-subhead" style="cursor:pointer;opacity:0.6;font-size:12px;margin:0 4px" title="Rename Sub-head">(edit)</span> → 
+      group ${esc(g.code3)} · ${g.items.length} item(s)
+    </div>
     ${cards}
     <div class="gdact">
-      <button class="ghost sm" id="gRename">Rename</button>
-      <button class="ghost sm" id="gMove">Move to another sub-head</button>
-      <button class="ghost sm" id="gMerge">Merge into another group</button>
+      <button class="ghost sm" id="gRename">Rename Group</button>
+      <button class="ghost sm" id="gLabels">Edit Specs/Labels</button>
+      <button class="ghost sm" id="gMove">Move</button>
+      <button class="ghost sm" id="gMerge">Merge</button>
       <button class="danger sm" id="gDelete">Retire</button>
     </div>
     <div class="tablewrap" style="max-height:220px"><table>
@@ -453,6 +457,51 @@ async function openGroup(id) {
     const d = await post('/api/specval/add', { group_id: g.id, slot: +b.dataset.addval, value: val });
     toast(`"${val}" is ${d.code2}`, 'ok'); openGroup(g.id);
   });
+  
+  // Edit Head Name
+  $$('.edit-head', $('#gDetail')).forEach(btn => btn.onclick = async () => {
+    // Find head_id by matching sub_id in BOOT.subheads
+    const sub = BOOT.subheads.find(s => s.id === g.subhead_id);
+    if (!sub) return toast('Subhead not found in BOOT', 'err');
+    const n = prompt('New name for this Head:', g.head_name); if (!n || n === g.head_name) return;
+    const d = await post('/api/rename', { scope: 'head', id: sub.head_id, name: n });
+    toast(`Head renamed. ${d.codes_changed} codes changed.`, 'ok');
+    const b = await api('/api/bootstrap'); Object.assign(BOOT, b);
+    loadGroups(); openGroup(g.id);
+  });
+
+  // Edit Sub-head Name
+  $$('.edit-subhead', $('#gDetail')).forEach(btn => btn.onclick = async () => {
+    const n = prompt('New name for this Sub-head:', g.sub_name); if (!n || n === g.sub_name) return;
+    const d = await post('/api/rename', { scope: 'subhead', id: g.subhead_id, name: n });
+    toast(`Sub-head renamed. ${d.codes_changed} codes changed.`, 'ok');
+    const b = await api('/api/bootstrap'); Object.assign(BOOT, b);
+    loadGroups(); openGroup(g.id);
+  });
+  
+  $('#gLabels').onclick = () => {
+    modal(`<h3>Edit Specification Labels</h3>
+      <div class="sub">Set the labels for specs used by this group (e.g. "Type", "Size"). Leave blank if unused.</div>
+      <div class="slots">
+        ${[1, 2, 3, 4].map(i => `<div class="slot"><label>Spec ${i} label</label>
+          <input id="edL${i}" value="${esc(g.labels[String(i)] || '')}"><span class="cc"></span></div>`).join('')}
+        <div class="slot"><label>Vendor label</label>
+          <input id="edLV" value="${esc(g.labels.vendor || '')}"><span class="cc"></span></div>
+      </div>
+      <div class="row"><button class="primary" id="edLGo">Save Labels</button>
+        <button class="ghost" id="edLNo">Cancel</button></div>`);
+    $('#edLNo').onclick = closeModal;
+    $('#edLGo').onclick = async () => {
+      const labels = {};
+      [1, 2, 3, 4].forEach(i => { const v = $('#edL' + i).value.trim(); if (v) labels[i] = v; });
+      const vl = $('#edLV').value.trim(); if (vl) labels.vendor = vl;
+      await post('/api/group/labels', { group_id: g.id, labels });
+      closeModal();
+      toast('Labels updated', 'ok');
+      openGroup(g.id);
+    };
+  };
+
   $('#gRename').onclick = async () => {
     const n = prompt('New name for this group:', g.name); if (!n) return;
     const d = await post('/api/rename', { scope: 'group', id: g.id, name: n });
