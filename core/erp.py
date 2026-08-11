@@ -48,7 +48,7 @@ ALLOWED = {
     ("GET", "Item"), ("POST", "Item"), ("PUT", "Item"),
     ("GET", "Item Code Specification"), ("POST", "Item Code Specification"),
     ("GET", "Item Code Vendor"), ("POST", "Item Code Vendor"),
-    ("GET", "Item Group"), ("GET", "UOM"), ("GET", "GST HSN Code"),
+    ("GET", "Item Group"), ("POST", "Item Group"), ("GET", "UOM"), ("GET", "GST HSN Code"),
 }
 
 # The non-doctype "method" endpoints permitted. Nothing else under
@@ -148,6 +148,8 @@ class ERP:
         if con is None:
             return self
         self.base = D.get_setting(con, "erp.base_url", None) or self.base
+        self.user = D.get_setting(con, "erp.username", "") or self.user
+        self.pwd = D.get_setting(con, "erp.password", "") or self.pwd
         self.api_key = D.get_setting(con, "erp.api_key", "") or ""
         self.api_secret = D.get_setting(con, "erp.api_secret", "") or ""
         self.dry_run = bool(D.get_setting(con, "erp.dry_run", self.dry_run))
@@ -316,6 +318,36 @@ class ERP:
                 return False
             raise
 
+    def _ensure_item_group(self, item_group, con):
+        if self.validate_item_group(item_group, con):
+            return True
+            
+        row = D.one(con, "SELECT g.name AS g_name, s.name AS s_name, h.name AS h_name "
+                         "FROM grp g JOIN subhead s ON g.subhead_id=s.id "
+                         "JOIN head h ON s.head_id=h.id WHERE g.name=?", (item_group,))
+        
+        h_name = row["h_name"] if row else None
+        s_name = row["s_name"] if row else None
+        
+        def _create_if_missing(name, parent, is_group):
+            if not self.validate_item_group(name, con):
+                if not self.dry_run:
+                    self._resource("POST", "Item Group", payload={
+                        "item_group_name": name,
+                        "parent_item_group": parent,
+                        "is_group": is_group
+                    })
+                self._group_cache = (None, 0.0)
+
+        self.login()
+        if h_name:
+            _create_if_missing(h_name, "All Item Groups", 1)
+        if s_name:
+            _create_if_missing(s_name, h_name or "All Item Groups", 1)
+        _create_if_missing(item_group, s_name or h_name or "All Item Groups", 0)
+        
+        return True
+
     # ------------------------------------------------------------ guardrail
     @staticmethod
     def _is_provisional(code, extra, con):
@@ -374,11 +406,10 @@ class ERP:
 
         try:
             self._refuse_provisional(code, extra, con)
-            if not self.validate_item_group(item_group, con):
+            self._ensure_item_group(item_group, con)
+            if not self.validate_item_group(item_group, con) and not self.dry_run:
                 raise ErpValidationError(
-                    f"refused: Item Group {item_group!r} does not exist in ERPNext. "
-                    f"We do not create Item Groups (CONTRACTS.md §8/decision #14) — "
-                    f"map to an existing name or ask an ERPNext admin to add it.")
+                    f"refused: Item Group {item_group!r} could not be automatically created in ERPNext.")
             if not self.validate_uom(uom, con):
                 raise ErpValidationError(f"refused: stock_uom {uom!r} is not a known UOM in ERPNext")
             if hsn and not self.validate_hsn(hsn, con):

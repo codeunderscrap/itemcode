@@ -138,9 +138,11 @@ DEFAULTS = {
     "erp.enabled": False,
     "erp.dry_run": True,
     "erp.base_url": "",
+    "erp.username": "",
+    "erp.password": "",
     "sync.times": "09:00,17:00",
 }
-SECRET_KEYS = {"llm.api_key"}
+SECRET_KEYS = {"llm.api_key", "erp.password"}
 MASK = "••••••••"
 
 
@@ -205,6 +207,16 @@ def post_settings(req):
 
     if "erp.base_url" in p:
         updates["erp.base_url"] = (p["erp.base_url"] or "").strip()
+
+    if "erp.username" in p:
+        updates["erp.username"] = (p["erp.username"] or "").strip()
+
+    if "erp.password" in p:
+        pwd = (p["erp.password"] or "").strip()
+        if pwd and pwd != MASK:
+            updates["erp.password"] = pwd
+        elif pwd == "":
+            updates["erp.password"] = ""
 
     if "sync.times" in p:
         updates["sync.times"] = (p["sync.times"] or "").strip() or DEFAULTS["sync.times"]

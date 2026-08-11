@@ -95,6 +95,16 @@ function render(settings) {
           <input id="erpUrl" placeholder="https://your-site.erpnext.com">
         </div>
       </div>
+      <div class="row">
+        <div class="field">
+          <label for="erpUsername">ERP Username</label>
+          <input id="erpUsername" placeholder="e.g. admin@example.com" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="erpPassword">ERP Password</label>
+          <input id="erpPassword" type="password" placeholder="${settings['erp.password'] ? MASK : 'leave blank if none'}" autocomplete="off">
+        </div>
+      </div>
     </div>
 
     <div class="card">
@@ -120,6 +130,7 @@ function render(settings) {
   $('#erpEnabled').checked = !!settings['erp.enabled'];
   $('#erpDryRun').checked = !!settings['erp.dry_run'];
   $('#erpUrl').value = settings['erp.base_url'] || '';
+  $('#erpUsername').value = settings['erp.username'] || '';
   $('#syncTimes').value = settings['sync.times'] || '09:00,17:00';
 
   $('#provider').addEventListener('change', () => {
@@ -151,10 +162,13 @@ function render(settings) {
       'erp.enabled': $('#erpEnabled').checked,
       'erp.dry_run': $('#erpDryRun').checked,
       'erp.base_url': $('#erpUrl').value,
+      'erp.username': $('#erpUsername').value.trim(),
       'sync.times': $('#syncTimes').value,
     };
     const typedKey = $('#apiKey').value; // '' means "leave unchanged" unless explicitly cleared below
     if (typedKey.trim()) body['llm.api_key'] = typedKey.trim();
+    const typedPwd = $('#erpPassword').value;
+    if (typedPwd.trim()) body['erp.password'] = typedPwd.trim();
     const d = await api('/api/v1/settings', { method: 'POST', body: JSON.stringify(body) });
     btn.disabled = false;
     if (!d.ok) {
@@ -165,6 +179,7 @@ function render(settings) {
     $('#saveMsg').style.color = 'var(--mm-good)';
     $('#saveMsg').textContent = 'saved';
     $('#apiKey').value = '';
+    $('#erpPassword').value = '';
     render(d.settings);
   });
 }
