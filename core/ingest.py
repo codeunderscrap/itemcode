@@ -229,12 +229,42 @@ def parse_line(raw):
 
 
 def from_text(text):
-    lines = []
-    for raw in (text or "").splitlines():
-        p = parse_line(raw)
-        if p:
-            lines.append(p)
-    return lines
+    if not text:
+        return []
+        
+    items = []
+    blocks = re.split(r'\n\s*\n', text.strip())
+    
+    for block in blocks:
+        raw_lines = block.splitlines()
+        current_item_lines = []
+        has_financial = False
+        
+        def _flush():
+            if current_item_lines:
+                p = parse_line(" | ".join(current_item_lines))
+                if p:
+                    items.append(p)
+            current_item_lines.clear()
+            
+        for ln in raw_lines:
+            ln = ln.strip()
+            if not ln:
+                continue
+                
+            line_has_financial = bool(QTY_RE.search(ln) or RATE_RE.search(ln) or HSN_RE.search(ln))
+            
+            if has_financial:
+                _flush()
+                has_financial = False
+                
+            current_item_lines.append(ln)
+            if line_has_financial:
+                has_financial = True
+                
+        _flush()
+        
+    return items
 
 
 # ------------------------------------------------------------------- OCR
