@@ -37,10 +37,14 @@ MAKER_RE = re.compile(
     r"(?:\s+[A-Z][A-Za-z0-9.&\-]{1,20})?)", re.I)
 
 NOISE_LINE = re.compile(
-    r"^\s*(?:tax\s+invoice|invoice\s*(?:no|date)|gstin|pan\b|state\s+code|bill\s+to|ship\s+to|"
+    r"^\s*(?:tax\s+invoice|invoice\s*(?:no|date)|gstin|pan\b|state\s+code|bill(?:ing)?\s+to|ship(?:ping)?\s+to|"
     r"terms|e-?way|declaration|subject\s+to|for\s+[A-Z].{0,40}$|authorised|signatory|"
     r"total|sub\s*total|grand\s*total|cgst|sgst|igst|round\s*off|amount\s+in\s+words|"
-    r"bank|ifsc|a/?c\s*no|page\s+\d+|s\.?\s*no\.?$|hsn/?sac$|description$)", re.I)
+    r"bank|ifsc|a/?c\s*no|page\s+\d+|s\.?\s*no\.?$|hsn/?sac$|description$|"
+    r"tel:|fax:|attendee:|receiver:|billing\s+number:|email:|address:|reg\.?\s*no|reg\.?\s*date|payment\s+term|payment\s+method|beneficiary|swift\s+code|company\s+name|details\s+of\s+receiver|details\s+of\s+consignee)", re.I)
+
+_DOC_TYPE_NON_INVOICE = re.compile(
+    r"\b(?:proforma\s+invoice|quotation|estimate|purchase\s+order)\b", re.I)
 
 # ------------------------------------------------------- invoice item table
 # A scanned/photographed invoice comes back from OCR as a flat list of text
@@ -310,6 +314,12 @@ def from_pdf(data):
         return [], f"could not open PDF ({e.__class__.__name__}: {e})"
     try:
         for pno, page in enumerate(doc, 1):
+            if pno == 1:
+                txt_for_check = page.get_text() or ""
+                m = _DOC_TYPE_NON_INVOICE.search(txt_for_check[:2000])
+                if m:
+                    return [], f"Detected non-invoice document ({m.group(0).title()}) - please upload a Tax Invoice."
+            
             got = False
             try:
                 tf = page.find_tables()
@@ -339,6 +349,10 @@ def from_pdf(data):
             if not got:
                 pix = page.get_pixmap(dpi=220)
                 ocr, note = _ocr_array(_pixmap_to_array(pix))
+                if pno == 1 and ocr.strip():
+                    m = _DOC_TYPE_NON_INVOICE.search(ocr[:2000])
+                    if m:
+                        return [], f"Detected non-invoice document ({m.group(0).title()}) - please upload a Tax Invoice."
                 if note:
                     notes.append(f"page {pno}: {note}")
                 for p in extract_invoice_items(ocr.splitlines()):
@@ -358,6 +372,9 @@ def from_image(data):
         return [], "Pillow not installed"
     img = Image.open(io.BytesIO(data)).convert("RGB")
     txt, note = _ocr_array(np.array(img))
+    m = _DOC_TYPE_NON_INVOICE.search(txt[:2000])
+    if m:
+        return [], f"Detected non-invoice document ({m.group(0).title()}) - please upload a Tax Invoice."
     lines = extract_invoice_items(txt.splitlines())
     for p in lines:
         p["ocr"] = True
