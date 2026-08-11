@@ -524,14 +524,26 @@ async function mergeDialog(g) {
 }
 
 $('#btnNewGroup').onclick = () => {
-  const opts = BOOT.subheads.map(s =>
+  const headOpts = BOOT.heads.map(h => `<option value="${h.id}">${esc(h.name)} (${h.code2})</option>`).join('');
+  const subOpts = BOOT.subheads.map(s =>
     `<option value="${s.id}">${esc(s.head_name)} / ${esc(s.name)} (${s.head_code}${s.code2})</option>`).join('');
-  modal(`<h3>New item group</h3>
-    <div class="sub">Anyone can add one. The next free number in that sub-head is used —
-      or a parked number, if the name is a close match to the group that freed it.</div>
+    
+  modal(`<h3>New hierarchy or group</h3>
+    <div class="sub">Create a new group under an existing sub-head, or create new heads/sub-heads entirely.</div>
     <div class="slots">
-      <div class="slot"><label>Sub-head</label><select id="ngSub">${opts}</select><span class="cc"></span></div>
-      <div class="slot"><label>Group name</label><input id="ngName"><span class="cc"></span></div>
+      <div class="slot"><label>Action</label><select id="ngAction">
+        <option value="group">Create Group (in existing Sub-head)</option>
+        <option value="subhead">Create Sub-head & Group</option>
+        <option value="head">Create Head, Sub-head & Group</option>
+      </select><span class="cc"></span></div>
+      
+      <div class="slot" id="rowExistHead" style="display:none"><label>Parent Head</label><select id="ngExistHead">${headOpts}</select><span class="cc"></span></div>
+      <div class="slot" id="rowExistSub"><label>Parent Sub-head</label><select id="ngExistSub">${subOpts}</select><span class="cc"></span></div>
+      
+      <div class="slot" id="rowNewHead" style="display:none"><label>New Head</label><input id="ngNewHead" placeholder="name this head"><span class="cc"></span></div>
+      <div class="slot" id="rowNewSub" style="display:none"><label>New Sub-head</label><input id="ngNewSub" placeholder="name this sub-head"><span class="cc"></span></div>
+      
+      <div class="slot"><label>New Group</label><input id="ngName" placeholder="name this group"><span class="cc"></span></div>
       <div class="slot"><label>UoM</label><input id="ngUom" placeholder="Nos"><span class="cc"></span></div>
       ${[1, 2, 3, 4].map(i => `<div class="slot"><label>Spec ${i} label</label>
         <input id="ngL${i}" placeholder="${i === 1 ? 'e.g. Type' : 'leave blank if unused'}"><span class="cc"></span></div>`).join('')}
@@ -539,15 +551,54 @@ $('#btnNewGroup').onclick = () => {
     </div>
     <div class="row"><button class="primary" id="ngGo">Create</button>
       <button class="ghost" id="ngNo">Cancel</button></div>`);
+      
+  const upd = () => {
+    const act = $('#ngAction').value;
+    $('#rowExistHead').style.display = act === 'subhead' ? 'flex' : 'none';
+    $('#rowExistSub').style.display = act === 'group' ? 'flex' : 'none';
+    $('#rowNewHead').style.display = act === 'head' ? 'flex' : 'none';
+    $('#rowNewSub').style.display = (act === 'head' || act === 'subhead') ? 'flex' : 'none';
+  };
+  $('#ngAction').onchange = upd;
+  
   $('#ngNo').onclick = closeModal;
   $('#ngGo').onclick = async () => {
+    const act = $('#ngAction').value;
+    let subId = null;
+    
+    if (act === 'head') {
+      const hname = $('#ngNewHead').value.trim();
+      if (!hname) return toast("Name the new head", "err");
+      const sname = $('#ngNewSub').value.trim();
+      if (!sname) return toast("Name the new sub-head", "err");
+      
+      const hd = await post('/api/head/add', { name: hname });
+      const sd = await post('/api/subhead/add', { head_id: hd.id, name: sname });
+      subId = sd.id;
+    } else if (act === 'subhead') {
+      const sname = $('#ngNewSub').value.trim();
+      if (!sname) return toast("Name the new sub-head", "err");
+      const sd = await post('/api/subhead/add', { head_id: +$('#ngExistHead').value, name: sname });
+      subId = sd.id;
+    } else {
+      subId = +$('#ngExistSub').value;
+    }
+
+    const gname = $('#ngName').value.trim();
+    if (!gname) return toast("Name the new group", "err");
+
     const labels = {};
     [1, 2, 3, 4].forEach(i => { const v = $('#ngL' + i).value.trim(); if (v) labels[i] = v; });
     const vl = $('#ngLV').value.trim(); if (vl) labels.vendor = vl;
+    
     const d = await post('/api/group/add', {
-      subhead_id: +$('#ngSub').value, name: $('#ngName').value.trim(),
+      subhead_id: subId, name: gname,
       uom: $('#ngUom').value.trim(), labels
     });
+    
+    const b = await api('/api/bootstrap');
+    Object.assign(BOOT, b);
+    
     closeModal();
     toast(`Group created as ${d.code3}${d.reused_vacancy_of ? ` (reused the number freed by “${d.reused_vacancy_of}”)` : ''}`, 'ok');
     loadGroups();
