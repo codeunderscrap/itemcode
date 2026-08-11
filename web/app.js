@@ -402,7 +402,6 @@ async function openGroup(id) {
   const labelOf = s => s === 5 ? g.labels.vendor : g.labels[String(s)];
   const cards = [1, 2, 3, 4, 5].map(s => {
     const lbl = labelOf(s), vals = g.specs[String(s)] || [];
-    if (!lbl && !vals.length) return '';
     return `<div class="slotcard"><div class="sh">
         <b>${s === 5 ? 'Vendor' : 'Spec ' + s}</b>
         <span class="muted">${esc(lbl || 'no label set')}</span>
