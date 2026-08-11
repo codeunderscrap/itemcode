@@ -366,8 +366,10 @@
 
   function renderCascade(c) {
     const heads = HEADS_CACHE || [];
-    const headOpts = heads.map((h) => `<option value="${h.id}" data-code2="${h.code2}" ${String(h.id) === String(c.sel.headId) ? "selected" : ""}>${esc(h.name)} (${h.code2})</option>`).join("");
-    const subOpts = (c.sel.subheads || []).map((s) => `<option value="${s.id}" data-code2="${s.code2}" ${String(s.id) === String(c.sel.subId) ? "selected" : ""}>${esc(s.name)} (${s.code2})</option>`).join("");
+    const headOpts = heads.map((h) => `<option value="${h.id}" data-code2="${h.code2}" ${String(h.id) === String(c.sel.headId) ? "selected" : ""}>${esc(h.name)} (${h.code2})</option>`).join("")
+      + `<option value="__newhead" ${c.sel.headId === "__newhead" ? "selected" : ""}>+ create a new head here…</option>`;
+    const subOpts = (c.sel.subheads || []).map((s) => `<option value="${s.id}" data-code2="${s.code2}" ${String(s.id) === String(c.sel.subId) ? "selected" : ""}>${esc(s.name)} (${s.code2})</option>`).join("")
+      + `<option value="__newsubhead" ${c.sel.subId === "__newsubhead" ? "selected" : ""}>+ create a new sub-head here…</option>`;
     const groupOpts = (c.sel.groups || []).map((g) => `<option value="${g.id}" data-code3="${g.code3}" data-name="${esc(g.name)}" ${String(g.id) === String(c.sel.groupId) ? "selected" : ""}>${esc(g.name)} (${g.code3})</option>`).join("")
       + `<option value="__newgroup" ${c.sel.groupId === "__newgroup" ? "selected" : ""}>+ create a new group here…</option>`;
     return `<div class="ce-cascade">
@@ -412,12 +414,42 @@
   }
 
   function renderNewGroupForm(c) {
+    const hints = c.input.hints || {};
+    const hrow = c.sel.headId === "__newhead" ? `<div class="slot"><label>New Head</label><input data-ng="hname" data-i="${c.i}" placeholder="name this head" value="${esc(hints.new_head_name || '')}"><span class="cc"></span></div>` : "";
+    const srow = c.sel.subId === "__newsubhead" ? `<div class="slot"><label>New Sub-head</label><input data-ng="sname" data-i="${c.i}" placeholder="name this sub-head" value="${esc(hints.new_subhead_name || '')}"><span class="cc"></span></div>` : "";
+    
+    const l1 = hints.new_group_labels && hints.new_group_labels["1"] ? esc(hints.new_group_labels["1"]) : "";
+    const l2 = hints.new_group_labels && hints.new_group_labels["2"] ? esc(hints.new_group_labels["2"]) : "";
+    const l3 = hints.new_group_labels && hints.new_group_labels["3"] ? esc(hints.new_group_labels["3"]) : "";
+    const l4 = hints.new_group_labels && hints.new_group_labels["4"] ? esc(hints.new_group_labels["4"]) : "";
+    const vl = hints.new_group_labels && hints.new_group_labels["vendor"] ? esc(hints.new_group_labels["vendor"]) : "";
+    
     return `<div class="slots ce-newgroup">
-      <div class="slot"><label>New group</label><input data-ng="name" data-i="${c.i}" placeholder="name this group"><span class="cc"></span></div>
-      <div class="slot"><label>UoM</label><input data-ng="uom" data-i="${c.i}" placeholder="Nos"><span class="cc"></span></div>
-      <div class="slot"><label>Spec labels</label><input data-ng="labels" data-i="${c.i}" placeholder="Type, Size (comma separated)"><span class="cc"></span></div>
-      <div class="slot"><label>Vendor label</label><input data-ng="vlabel" data-i="${c.i}" placeholder="blank = no vendor in the code"><span class="cc"></span></div>
-      <div class="slot"><label></label><button class="ghost sm" data-act="apply-newgroup" data-i="${c.i}">Create &amp; use this group</button><span class="cc"></span></div>
+      ${hrow}
+      ${srow}
+      <div class="slot"><label>New Group</label><input data-ng="name" data-i="${c.i}" placeholder="name this group" value="${esc(hints.new_group_name || '')}"><span class="cc"></span></div>
+      <div class="slot"><label>UoM</label><input data-ng="uom" data-i="${c.i}" placeholder="Nos" value="${esc(c.input.uom || '')}"><span class="cc"></span></div>
+      <div class="slot"><label>Spec 1 label</label>
+        <input data-ng="label1" data-i="${c.i}" placeholder="e.g. Type" value="${l1}" style="width:35%; margin-right:5%">
+        <input data-ng="val1" data-i="${c.i}" placeholder="value (e.g. U+2)" value="${esc(hints.s1 || '')}" style="width:50%">
+      </div>
+      <div class="slot"><label>Spec 2 label</label>
+        <input data-ng="label2" data-i="${c.i}" placeholder="e.g. Size" value="${l2}" style="width:35%; margin-right:5%">
+        <input data-ng="val2" data-i="${c.i}" placeholder="value (e.g. 90x90x110)" value="${esc(hints.s2 || '')}" style="width:50%">
+      </div>
+      <div class="slot"><label>Spec 3 label</label>
+        <input data-ng="label3" data-i="${c.i}" value="${l3}" style="width:35%; margin-right:5%">
+        <input data-ng="val3" data-i="${c.i}" placeholder="value" value="${esc(hints.s3 || '')}" style="width:50%">
+      </div>
+      <div class="slot"><label>Spec 4 label</label>
+        <input data-ng="label4" data-i="${c.i}" value="${l4}" style="width:35%; margin-right:5%">
+        <input data-ng="val4" data-i="${c.i}" placeholder="value" value="${esc(hints.s4 || '')}" style="width:50%">
+      </div>
+      <div class="slot"><label>Vendor label</label>
+        <input data-ng="vlabel" data-i="${c.i}" placeholder="blank = no vendor" value="${vl}" style="width:35%; margin-right:5%">
+        <input data-ng="vval" data-i="${c.i}" placeholder="value" value="${esc(hints.vendor_text || '')}" style="width:50%">
+      </div>
+      <div class="slot"><label></label><button class="ghost sm" data-act="apply-newgroup" data-i="${c.i}">Create &amp; use this hierarchy</button><span class="cc"></span></div>
     </div>`;
   }
 
@@ -558,6 +590,24 @@
         else if (v.value) c.sel.vendor = "new:" + v.value;
       }
       await previewCard(c);
+    } else if (c.input.hints && c.input.hints.new_group_name) {
+      if (c.input.hints.new_head_name) {
+        c.sel.headId = "__newhead";
+        c.sel.subId = "__newsubhead";
+        c.sel.groupId = "__newgroup";
+      } else if (c.input.hints.new_subhead_name) {
+        c.sel.headId = c.res.phase2.head.id; c.sel.headCode = c.res.phase2.head.code2;
+        await loadSubheads(c, c.sel.headId);
+        c.sel.subId = "__newsubhead";
+        c.sel.groupId = "__newgroup";
+      } else {
+        c.sel.headId = c.res.phase2.head.id; c.sel.headCode = c.res.phase2.head.code2;
+        await loadSubheads(c, c.sel.headId);
+        c.sel.subId = c.res.phase2.subhead.id; c.sel.subCode = c.res.phase2.subhead.code2;
+        await loadGroups(c, c.sel.subId);
+        c.sel.groupId = "__newgroup";
+      }
+      updateCard(c);
     } else if (res_subhead(c)) {
       c.sel.headId = c.res.phase2.head.id; c.sel.headCode = c.res.phase2.head.code2;
       await loadSubheads(c, c.sel.headId);
@@ -682,21 +732,59 @@
 
       if (act === "apply-newgroup") {
         const card = document.querySelector(`.card[data-i="${i}"]`);
+        
+        let headName = null;
+        if (c.sel.headId === "__newhead") {
+          headName = card.querySelector('[data-ng="hname"]')?.value.trim();
+          if (!headName) return toast("Name the new head", "err");
+        }
+        
+        let subName = null;
+        if (c.sel.subId === "__newsubhead") {
+          subName = card.querySelector('[data-ng="sname"]')?.value.trim();
+          if (!subName) return toast("Name the new sub-head", "err");
+        }
+
         const name = card.querySelector('[data-ng="name"]').value.trim();
         if (!name) return toast("Name the new group", "err");
+        
         const uom = card.querySelector('[data-ng="uom"]').value.trim();
-        const labelsText = card.querySelector('[data-ng="labels"]').value.trim();
+        
         const labels = {};
-        labelsText.split(",").map((s) => s.trim()).filter(Boolean).forEach((l, k) => { if (k < 4) labels[k + 1] = l; });
-        const vlabel = card.querySelector('[data-ng="vlabel"]').value.trim();
+        const hintsPatch = {};
+        
+        [1, 2, 3, 4].forEach(n => {
+          const lbl = card.querySelector(`[data-ng="label${n}"]`)?.value.trim();
+          const val = card.querySelector(`[data-ng="val${n}"]`)?.value.trim();
+          if (lbl) labels[String(n)] = lbl;
+          if (val) hintsPatch[`s${n}`] = val;
+        });
+
+        const vlabel = card.querySelector('[data-ng="vlabel"]')?.value.trim();
+        const vval = card.querySelector('[data-ng="vval"]')?.value.trim();
         if (vlabel) labels.vendor = vlabel;
+        if (vval) hintsPatch.vendor_text = vval;
+        
         try {
           const d = await postJSON("/api/v1/resolve", {
             ...c.input, uom: uom || c.input.uom,
-            hints: { subhead_id: c.sel.subId, new_group_name: name, new_group_labels: labels },
+            hints: { 
+              ...(c.input.hints || {}),
+              ...hintsPatch,
+              new_head_name: headName,
+              new_subhead_name: subName,
+              subhead_id: c.sel.subId === "__newsubhead" ? null : c.sel.subId, 
+              new_group_name: name, 
+              new_group_labels: labels 
+            },
           });
+          
+          // Save the hints in c.input so they survive edit toggles
+          c.input.uom = uom || c.input.uom;
+          c.input.hints = d.input.hints; // the backend returns the updated hints
+          
           c.res = d; c.editing = false; c.sel = null; c.idemKey = uid();
-          toast(`Group "${name}" proposed as ${(d.segments || {}).group || "···"}`, "ok");
+          toast(`Hierarchy updated. Proposed as ${(d.segments || {}).group || "···"}`, "ok");
         } catch (err) { toast(err.message, "err"); }
         updateCard(c);
       }
@@ -711,20 +799,29 @@
 
       if (t.dataset.cas === "head") {
         c.sel.headId = t.value || null;
-        c.sel.headCode = t.value ? t.selectedOptions[0].dataset.code2 : null;
-        Object.assign(c.sel, { subId: null, subCode: null, groupId: null, groupName: null, groupCode3: null, labels: {}, slots: {}, vendor: null, subheads: [], groups: [] });
+        c.sel.headCode = t.value && t.value !== "__newhead" ? t.selectedOptions[0].dataset.code2 : null;
+        if (t.value === "__newhead") {
+          c.sel.subId = "__newsubhead";
+          c.sel.groupId = "__newgroup";
+        } else {
+          Object.assign(c.sel, { subId: null, subCode: null, groupId: null, groupName: null, groupCode3: null, labels: {}, slots: {}, vendor: null, subheads: [], groups: [] });
+        }
         c.previewRes = null;
         updateCard(c);
-        if (c.sel.headId) await loadSubheads(c, c.sel.headId);
+        if (c.sel.headId && c.sel.headId !== "__newhead") await loadSubheads(c, c.sel.headId);
         return;
       }
       if (t.dataset.cas === "subhead") {
         c.sel.subId = t.value || null;
-        c.sel.subCode = t.value ? t.selectedOptions[0].dataset.code2 : null;
-        Object.assign(c.sel, { groupId: null, groupName: null, groupCode3: null, labels: {}, slots: {}, vendor: null, groups: [] });
+        c.sel.subCode = t.value && t.value !== "__newsubhead" ? t.selectedOptions[0].dataset.code2 : null;
+        if (t.value === "__newsubhead") {
+          c.sel.groupId = "__newgroup";
+        } else {
+          Object.assign(c.sel, { groupId: null, groupName: null, groupCode3: null, labels: {}, slots: {}, vendor: null, groups: [] });
+        }
         c.previewRes = null;
         updateCard(c);
-        if (c.sel.subId) await loadGroups(c, c.sel.subId);
+        if (c.sel.subId && c.sel.subId !== "__newsubhead") await loadGroups(c, c.sel.subId);
         return;
       }
       if (t.dataset.cas === "group") {
