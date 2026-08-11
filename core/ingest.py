@@ -61,7 +61,7 @@ _DOC_TYPE_NON_INVOICE = re.compile(
 # even when a single item's description wraps across many separate OCR
 # lines - which it does, constantly.
 _TABLE_HEADER_STRONG = re.compile(
-    r"description\s+of\s+goods|hsn\s*/\s*sac|particulars\s+of\s+goods|item\s+description|hsn\s+code", re.I)
+    r"description\s+of\s+goods|hsn\s*/\s*sac|particulars\s+of\s+goods|item\s+description|hsn\s+code|hsn.?sac", re.I)
 _TABLE_HEADER_WEAK = re.compile(
     r"\b(?:quantity|qty|rate|amount|hsn|sac|particulars|description)\b", re.I)
 _TABLE_FOOTER = re.compile(
@@ -103,6 +103,15 @@ def _find_table_bounds(lines):
         if _TABLE_HEADER_STRONG.search(ln) or len(_TABLE_HEADER_WEAK.findall(ln)) >= 2:
             start = i + 1
             break
+        # In OCR, column headers are often split into separate lines. Look ahead 5 lines.
+        weak_count = len(_TABLE_HEADER_WEAK.findall(ln))
+        if weak_count > 0:
+            for j in range(1, 6):
+                if i + j < len(lines):
+                    weak_count += len(_TABLE_HEADER_WEAK.findall(lines[i+j]))
+            if weak_count >= 3:
+                start = i + 1
+                break
     if start is None:
         return None
     # the header itself is usually several consecutive short column-name
@@ -144,8 +153,10 @@ def extract_invoice_items(raw_lines):
         for ln in lines:
             if _TABLE_FOOTER.search(ln):
                 break
+            if NOISE_LINE.match(ln):
+                continue
             p = parse_line(ln)
-            if p:
+            if p and (p.get("qty") or p.get("rate") or p.get("hsn")):
                 fallback_items.append(p)
         return fallback_items
 

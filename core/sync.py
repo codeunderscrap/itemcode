@@ -134,7 +134,7 @@ def sync(con, direction="pull", erp=None):
             grp = D.one(con, "SELECT name FROM grp WHERE id=?", (it["grp_id"],))
             try:
                 res = erp.create_item(it["code"], it["name"], grp["name"] if grp else None,
-                                       it["uom"] or "Nos", it["hsn"], con=con)
+                                       it["uom"] or "Nos", it["hsn"], tax_template=it.get("tax"), con=con)
             except (ErpValidationError, ErpGuardrailError) as e:
                 res = {"ok": False, "error": str(e)}
             pushed.append({"code": it["code"], "result": res})
