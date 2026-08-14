@@ -303,8 +303,6 @@ $('#acClear') && ($('#acClear').onclick = () => {
 /* ───────────────────────────────────────────────────────── push review */
 let _currentPushItem = null;
 async function openPushReviewModal(code) {
-  const modal = document.getElementById('pushReviewModal');
-  if (!modal) return;
   const d = await api('/api/v1/item/' + encodeURIComponent(code));
   if (!d.ok) { toast(d.error, 'err'); return; }
   const it = d.item;
@@ -314,23 +312,40 @@ async function openPushReviewModal(code) {
   const specLine = (it.specs || []).filter(s => s.label)
     .map(s => `${esc(s.label)} <b>${esc(s.value || '—')}</b>`).join(' · ') || 'no specifications on this group';
     
-  document.getElementById('pushReviewContent').innerHTML = `
-    <div style="margin-bottom: 12px"><h3><code style="font-size:15px">${esc(it.code)}</code></h3>
-    <div>${esc(it.name || 'Unnamed Item')}</div></div>
-    <div class="sub">${classCascade} &nbsp;·&nbsp; ${specLine}</div>
-  `;
-  
   const txd = await api('/api/v1/cascade/taxes');
   const taxes = txd.taxes || [];
-  
-  const taxSel = document.getElementById('pushTaxSel');
-  taxSel.innerHTML = '<option value="">-- Select a Tax Template --</option>' + 
+  const taxOptions = '<option value="">-- Select a Tax Template --</option>' + 
     taxes.map(t => `<option value="${esc(t)}" ${t === it.tax ? 'selected' : ''}>${esc(t)}</option>`).join('');
+
+  modal(`
+    <h2 style="margin-top: 0; margin-bottom: 16px;">Review & Push to ERP</h2>
+    <div style="margin-bottom: 20px; font-size: 13.5px; color: var(--mm-dim);">
+      <div style="margin-bottom: 12px"><h3><code style="font-size:15px">${esc(it.code)}</code></h3>
+      <div>${esc(it.name || 'Unnamed Item')}</div></div>
+      <div class="sub">${classCascade} &nbsp;·&nbsp; ${specLine}</div>
+    </div>
     
-  document.getElementById('pushHsnInp').value = it.hsn || '';
+    <div class="row" style="display: flex; gap: 14px; margin-bottom: 20px;">
+      <div class="field" style="flex: 1;">
+        <label style="display: block; font-size: 12.5px; color: var(--mm-dim); margin-bottom: 5px;">Tax Template (Required in ERP)</label>
+        <select id="pushTaxSel" style="width: 100%; font: inherit; background: var(--mm-navy); color: var(--mm-text); border: 1px solid var(--mm-border); border-radius: 7px; padding: 9px 11px; outline: none;">
+          ${taxOptions}
+        </select>
+      </div>
+      <div class="field" style="flex: 1;">
+        <label style="display: block; font-size: 12.5px; color: var(--mm-dim); margin-bottom: 5px;">HSN Code</label>
+        <input id="pushHsnInp" type="text" placeholder="e.g. 84821011" value="${esc(it.hsn || '')}" style="width: 100%; font: inherit; background: var(--mm-navy); color: var(--mm-text); border: 1px solid var(--mm-border); border-radius: 7px; padding: 9px 11px; outline: none;">
+      </div>
+    </div>
+    <div class="btnrow" style="display: flex; gap: 10px; justify-content: flex-end;">
+      <button class="ghost" id="pushReviewCancel" style="font: inherit; cursor: pointer; border-radius: 7px; padding: 9px 16px; background: transparent; border: 1px solid var(--mm-border); color: var(--mm-dim);">Cancel</button>
+      <button class="primary" id="pushReviewConfirm" style="font: inherit; cursor: pointer; border-radius: 7px; padding: 9px 16px; background: var(--mm-teal); color: #00202c; font-weight: 600; border: 1px solid transparent;">Confirm Push</button>
+    </div>
+  `);
   
-  document.getElementById('pushReviewCancel').onclick = () => modal.close();
+  document.getElementById('pushReviewCancel').onclick = closeModal;
   document.getElementById('pushReviewConfirm').onclick = async () => {
+    const taxSel = document.getElementById('pushTaxSel');
     const tax = taxSel.value;
     const hsn = document.getElementById('pushHsnInp').value.trim();
     if (!tax) {
@@ -344,15 +359,16 @@ async function openPushReviewModal(code) {
       const res = await post('/api/v1/item/' + encodeURIComponent(it.code) + '/push', { tax, hsn });
       if (!res.ok) throw new Error(res.error || 'Failed to push');
       toast('Successfully pushed to ERPNext', 'ok');
-      modal.close();
+      closeModal();
       loadMaster();
     } catch (e) {
       toast(e.message, 'err');
     } finally {
-      document.getElementById('pushReviewConfirm').textContent = 'Confirm Push';
-      document.getElementById('pushReviewConfirm').disabled = false;
+      const btn = document.getElementById('pushReviewConfirm');
+      if (btn) {
+        btn.textContent = 'Confirm Push';
+        btn.disabled = false;
+      }
     }
   };
-  
-  modal.showModal();
 }

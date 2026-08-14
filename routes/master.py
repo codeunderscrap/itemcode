@@ -441,6 +441,7 @@ def item_push_v1(req):
         
     con.execute("UPDATE item SET status='in_erp', erp_synced_at=?, frozen=1 WHERE id=?",
                 (now(), it["id"]))
+    con.commit()
     
     return ok({"code": code, "status": "in_erp", "erp_res": res})
 
