@@ -314,7 +314,10 @@ async function openPushReviewModal(code) {
     
   const txd = await api('/api/v1/cascade/taxes');
   const taxes = txd.taxes || [];
-  const taxOptions = '<option value="">-- Select a Tax Template --</option>' + 
+  const taxPlaceholder = taxes.length === 0
+    ? '-- No templates loaded (Check ERPNext settings) --'
+    : '-- Select a Tax Template --';
+  const taxOptions = `<option value="">${esc(taxPlaceholder)}</option>` + 
     taxes.map(t => `<option value="${esc(t)}" ${t === it.tax ? 'selected' : ''}>${esc(t)}</option>`).join('');
 
   modal(`
