@@ -433,8 +433,25 @@ def item_push_v1(req):
     if has_specs:
         extra["has_item_specification"] = 1
         
-    res = erp.create_item(code, it["name"], it["gname"], it.get("uom") or "Nos",
-                          it.get("hsn"), extra=extra, tax_template=it.get("tax"), con=con)
+    exists = False
+    try:
+        check = erp._resource("GET", "Item", name=code)
+        if check and check.get("data"):
+            exists = True
+    except Exception:
+        pass
+
+    if exists:
+        # If it already exists, update it rather than creating it (which would fail)
+        up_fields = {
+            "gst_hsn_code": it.get("hsn")
+        }
+        if it.get("tax"):
+            up_fields["taxes"] = [{"item_tax_template": it.get("tax")}]
+        res = erp.update_item(code, up_fields, con=con)
+    else:
+        res = erp.create_item(code, it["name"], it["gname"], it.get("uom") or "Nos",
+                              it.get("hsn"), extra=extra, tax_template=it.get("tax"), con=con)
                           
     if not res.get("ok"):
         raise ApiError("FAILED", f"ERPNext push failed: {res.get('error', 'unknown error')}")
