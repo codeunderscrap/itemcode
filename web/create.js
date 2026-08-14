@@ -267,7 +267,7 @@
     $("#ce-empty").classList.add("hide");
     state.cards = state.lines.map((l, i) => ({
       i, line: l, input: lineToPayload(l), res: null, status: "pending",
-      idemKey: uid(), editing: false, sel: null, previewRes: null,
+      idemKey: uid(), editing: true, sel: null, previewRes: null,
       submitting: false, submitted: false, submittedCode: null, learnedAlias: null,
     }));
     $("#ce-reslist").innerHTML = state.cards.map(cardHtml).join("");
@@ -283,6 +283,48 @@
         try {
           c.res = await postJSON("/api/v1/resolve", c.input);
           c.status = "ready";
+          c.sel = {
+            headId: null, headCode: null, subId: null, subCode: null,
+            groupId: null, groupName: null, groupCode3: null, groups: [],
+            labels: {}, slots: {}, specOptions: { 1: [], 2: [], 3: [], 4: [] }, vendor: null, vendorOptions: [],
+            tax: c.input.tax || null,
+          };
+          const g = c.res.phase2 && c.res.phase2.group;
+          if (g) {
+            c.sel.headId = g.head_id; c.sel.headCode = g.head_code;
+            await loadSubheads(c, g.head_id);
+            c.sel.subId = g.sub_id; c.sel.subCode = g.sub_code;
+            await loadGroups(c, g.sub_id);
+            c.sel.groupId = g.id; c.sel.groupName = g.name; c.sel.groupCode3 = g.code3;
+            await loadSlots(c, g.id);
+            (c.res.phase3 && c.res.phase3.slots || []).forEach((s) => {
+              if (s.specval_id) c.sel.slots[s.slot] = String(s.specval_id);
+              else if (s.value) c.sel.slots[s.slot] = "new:" + s.value;
+            });
+            const v = c.res.phase3 && c.res.phase3.vendor;
+            if (v) {
+              if (v.specval_id) c.sel.vendor = String(v.specval_id);
+              else if (v.value) c.sel.vendor = "new:" + v.value;
+            }
+            await previewCard(c);
+          } else if (c.input.hints && c.input.hints.new_group_name) {
+            if (c.input.hints.new_head_name) {
+              c.sel.headId = "__newhead";
+              c.sel.subId = "__newsubhead";
+              c.sel.groupId = "__newgroup";
+            } else if (c.input.hints.new_subhead_name) {
+              c.sel.headId = c.res.phase2.head.id; c.sel.headCode = c.res.phase2.head.code2;
+              await loadSubheads(c, c.sel.headId);
+              c.sel.subId = "__newsubhead";
+              c.sel.groupId = "__newgroup";
+            } else {
+              c.sel.headId = c.res.phase2.head.id; c.sel.headCode = c.res.phase2.head.code2;
+              await loadSubheads(c, c.sel.headId);
+              c.sel.subId = c.res.phase2.subhead.id; c.sel.subCode = c.res.phase2.subhead.code2;
+              await loadGroups(c, c.sel.subId);
+              c.sel.groupId = "__newgroup";
+            }
+          }
         } catch (err) {
           c.res = { outcome: "error", blockers: [err.message || "could not resolve this line"] };
           c.status = "error";
