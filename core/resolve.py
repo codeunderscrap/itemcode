@@ -850,7 +850,7 @@ def commit(con, matcher, proposal, user, push_erp=False, erp=None):
             extra["has_item_specification"] = 1
 
         result["erp"] = erp.create_item(code, name, group["name"], payload.get("uom") or "Nos",
-                                        payload.get("hsn"), extra=extra, tax_template=payload.get("tax"))
+                                        payload.get("hsn"), extra=extra, tax_template=payload.get("tax"), con=con)
         if result["erp"].get("ok"):
             con.execute("UPDATE item SET status='in_erp', erp_synced_at=?, frozen=1 WHERE id=?",
                         (now(), item_id))

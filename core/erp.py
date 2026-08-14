@@ -394,28 +394,30 @@ class ERP:
     def _whitelist(payload, allowed):
         return {k: v for k, v in (payload or {}).items() if k in allowed}
 
-    def _ensure_item_specification(self, spec_val):
-        if not spec_val:
+    def _ensure_item_specification(self, item_group, spec_val, code2, slot):
+        if not spec_val or not code2:
             return True
+        doc_name = f"{item_group}-{spec_val}-{code2}"
         self.login()
         try:
-            d = self._resource("GET", "Item Code Specification", name=spec_val)
+            d = self._resource("GET", "Item Code Specification", name=doc_name)
             if d.get("data"):
                 return True
         except urllib.error.HTTPError as e:
             if e.code != 404:
-                # If we get a 403 PermissionError, we log it and proceed so that
-                # the Item creation step will just fail with a LinkValidationError
-                # if the admin hasn't created the spec.
-                print(f"Warning: Failed to fetch Item Code Specification {spec_val}: {e}")
+                print(f"Warning: Failed to fetch Item Code Specification {doc_name}: {e}")
                 return False
         if not self.dry_run:
             try:
-                self._resource("POST", "Item Code Specification", payload={
-                    "item_code_specification_name": spec_val
-                })
+                payload = {
+                    "item_group": item_group,
+                    "specification": spec_val,
+                    "specification_code": code2
+                }
+                payload[f"specification_{slot}"] = 1
+                self._resource("POST", "Item Code Specification", payload=payload)
             except urllib.error.HTTPError as e:
-                print(f"Warning: Failed to auto-create Item Code Specification {spec_val}: {e}")
+                print(f"Warning: Failed to auto-create Item Code Specification {doc_name}: {e}")
                 return False
         return True
 
@@ -470,7 +472,13 @@ class ERP:
         extra_fields = self._whitelist(extra, CREATE_FIELDS)
         for k, v in extra_fields.items():
             if k.startswith("item_specification_") and v:
-                self._ensure_item_specification(v)
+                slot_str = k.split("_")[-1]
+                slot_num = int(slot_str)
+                sv = D.one(con, "SELECT code2 FROM specval sv JOIN grp g ON sv.grp_id = g.id WHERE g.name = ? AND sv.slot = ? AND sv.value = ?", (item_group, slot_num, v))
+                code2 = sv["code2"] if sv else "00"
+                doc_name = f"{item_group}-{v}-{code2}"
+                self._ensure_item_specification(item_group, v, code2, slot_num)
+                extra_fields[k] = doc_name
         
         payload.update(extra_fields)
 
