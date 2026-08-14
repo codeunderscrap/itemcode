@@ -35,7 +35,7 @@ CFG = json.load(open(os.path.join(ROOT, "config.json"), encoding="utf-8"))
 CON = D.connect()
 D.init(CON)
 MATCHER = Matcher(CFG.get("llm"), CFG.get("match_threshold", 60))
-ERPC = ERP(CFG.get("erpnext", {}))
+ERPC = ERP(CFG.get("erpnext", {})).refresh(CON)
 ctx.init(ROOT, CFG, CON, MATCHER, ERPC)
 
 # Imported after ctx.init() so route modules - which read core.context.ctx at

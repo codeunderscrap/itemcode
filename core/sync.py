@@ -133,8 +133,20 @@ def sync(con, direction="pull", erp=None):
                 continue
             grp = D.one(con, "SELECT name FROM grp WHERE id=?", (it["grp_id"],))
             try:
+                extra = {}
+                has_specs = False
+                for i in range(1, 5):
+                    s_id = it[f"s{i}"]
+                    if s_id:
+                        val = D.one(con, "SELECT value FROM specval WHERE id=?", (s_id,))
+                        if val:
+                            extra[f"item_specification_{i}"] = val["value"]
+                            has_specs = True
+                if has_specs:
+                    extra["has_item_specification"] = 1
+
                 res = erp.create_item(it["code"], it["name"], grp["name"] if grp else None,
-                                       it["uom"] or "Nos", it["hsn"], tax_template=it.get("tax"), con=con)
+                                       it["uom"] or "Nos", it["hsn"], extra=extra, tax_template=it.get("tax"), con=con)
             except (ErpValidationError, ErpGuardrailError) as e:
                 res = {"ok": False, "error": str(e)}
             pushed.append({"code": it["code"], "result": res})

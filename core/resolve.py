@@ -837,8 +837,20 @@ def commit(con, matcher, proposal, user, push_erp=False, erp=None):
 
     result = {"code": code, "item_id": item_id, "erp": None}
     if push_erp and erp:
+        extra = {}
+        has_specs = False
+        for i in range(1, 5):
+            s_id = payload.get(f"slot_{i}")
+            if s_id:
+                val = con.execute("SELECT value FROM specval WHERE id=?", (s_id,)).fetchone()
+                if val:
+                    extra[f"item_specification_{i}"] = val["value"]
+                    has_specs = True
+        if has_specs:
+            extra["has_item_specification"] = 1
+
         result["erp"] = erp.create_item(code, name, group["name"], payload.get("uom") or "Nos",
-                                        payload.get("hsn"), tax_template=payload.get("tax"))
+                                        payload.get("hsn"), extra=extra, tax_template=payload.get("tax"))
         if result["erp"].get("ok"):
             con.execute("UPDATE item SET status='in_erp', erp_synced_at=?, frozen=1 WHERE id=?",
                         (now(), item_id))
