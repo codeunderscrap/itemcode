@@ -394,6 +394,31 @@ class ERP:
     def _whitelist(payload, allowed):
         return {k: v for k, v in (payload or {}).items() if k in allowed}
 
+    def _ensure_item_specification(self, spec_val):
+        if not spec_val:
+            return True
+        self.login()
+        try:
+            d = self._resource("GET", "Item Code Specification", name=spec_val)
+            if d.get("data"):
+                return True
+        except urllib.error.HTTPError as e:
+            if e.code != 404:
+                # If we get a 403 PermissionError, we log it and proceed so that
+                # the Item creation step will just fail with a LinkValidationError
+                # if the admin hasn't created the spec.
+                print(f"Warning: Failed to fetch Item Code Specification {spec_val}: {e}")
+                return False
+        if not self.dry_run:
+            try:
+                self._resource("POST", "Item Code Specification", payload={
+                    "item_code_specification_name": spec_val
+                })
+            except urllib.error.HTTPError as e:
+                print(f"Warning: Failed to auto-create Item Code Specification {spec_val}: {e}")
+                return False
+        return True
+
     # ---------------------------------------------------------------- write
     def create_item(self, code, item_name, item_group, uom="Nos", hsn=None, extra=None, tax_template=None, con=None):
         """The only way an Item is ever created. One at a time, on Submit —
@@ -441,7 +466,13 @@ class ERP:
             payload["gst_hsn_code"] = hsn
         if tax_template:
             payload["taxes"] = [{"item_tax_template": tax_template}]
-        payload.update(self._whitelist(extra, CREATE_FIELDS))
+        
+        extra_fields = self._whitelist(extra, CREATE_FIELDS)
+        for k, v in extra_fields.items():
+            if k.startswith("item_specification_") and v:
+                self._ensure_item_specification(v)
+        
+        payload.update(extra_fields)
 
         if self.dry_run:
             print(f"[erp dry-run] would POST Item: {json.dumps(payload)}")
