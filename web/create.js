@@ -395,8 +395,8 @@
     const rows = [1, 2, 3, 4].map((slot) => {
       const label = c.sel.labels[String(slot)] || `Spec ${slot}`;
       const cur = c.sel.slots[slot];
-      const opts = (c.sel.specOptions[slot] || []).map((o) => `<option value="${o.id}" ${String(o.id) === String(cur) ? "selected" : ""}>${esc(o.value)} · ${o.code2}</option>`).join("");
-      const newOpt = cur && String(cur).startsWith("new:") ? `<option value="${esc(cur)}" selected>${esc(cur.slice(4))} · new</option>` : "";
+      const opts = (c.sel.specOptions[slot] || []).map((o) => `<option value="${o.id}" ${String(o.id) === String(cur) ? "selected" : ""}>${esc(o.value)}</option>`).join("");
+      const newOpt = cur && String(cur).startsWith("new:") ? `<option value="${esc(cur)}" selected>${esc(cur.slice(4))}</option>` : "";
       return `<div class="slot"><label title="${esc(label)}">${esc(label)}</label>
         <select data-cas-slot="${slot}" data-i="${c.i}">
           <option value="">— none —</option>${opts}${newOpt}
@@ -408,8 +408,8 @@
     const vopts = c.sel.vendorOptions && c.sel.vendorOptions.length;
     const vlabel = c.sel.labels.vendor || "Vendor";
     const curV = c.sel.vendor;
-    const voptsHTML = (c.sel.vendorOptions || []).map((o) => `<option value="${o.id}" ${String(o.id) === String(curV) ? "selected" : ""}>${esc(o.value)} · ${o.code2}</option>`).join("");
-    const newVOpt = curV && String(curV).startsWith("new:") ? `<option value="${esc(curV)}" selected>${esc(curV.slice(4))} · new</option>` : "";
+    const voptsHTML = (c.sel.vendorOptions || []).map((o) => `<option value="${o.id}" ${String(o.id) === String(curV) ? "selected" : ""}>${esc(o.value)}</option>`).join("");
+    const newVOpt = curV && String(curV).startsWith("new:") ? `<option value="${esc(curV)}" selected>${esc(curV.slice(4))}</option>` : "";
     const vcode = c.previewRes && c.previewRes.vendor ? c.previewRes.vendor.code : null;
     vrow = `<div class="slot"><label>${esc(vlabel)}</label>
       <select data-cas-vendor="1" data-i="${c.i}"><option value="">— none —</option>${voptsHTML}${newVOpt}

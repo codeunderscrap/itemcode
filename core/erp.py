@@ -332,29 +332,37 @@ class ERP:
         if self.validate_item_group(item_group, con):
             return True
             
-        row = D.one(con, "SELECT g.name AS g_name, s.name AS s_name, h.name AS h_name "
+        row = D.one(con, "SELECT g.name AS g_name, s.name AS s_name, h.name AS h_name, "
+                         "g.code3 AS g_code, s.code2 AS s_code, h.code2 AS h_code "
                          "FROM grp g JOIN subhead s ON g.subhead_id=s.id "
                          "JOIN head h ON s.head_id=h.id WHERE g.name=?", (item_group,))
         
         h_name = row["h_name"] if row else None
         s_name = row["s_name"] if row else None
         
-        def _create_if_missing(name, parent, is_group):
+        h_abbr = row["h_code"] if row else None
+        s_abbr = (row["h_code"] + row["s_code"]) if row else None
+        g_abbr = (row["h_code"] + row["s_code"] + row["g_code"]) if row else None
+        
+        def _create_if_missing(name, parent, is_group, abbr):
             if not self.validate_item_group(name, con):
                 if not self.dry_run:
-                    self._resource("POST", "Item Group", payload={
+                    payload = {
                         "item_group_name": name,
                         "parent_item_group": parent,
                         "is_group": is_group
-                    })
+                    }
+                    if abbr:
+                        payload["item_group_abbreviation"] = abbr
+                    self._resource("POST", "Item Group", payload=payload)
                 self._group_cache = (None, 0.0)
 
         self.login()
         if h_name:
-            _create_if_missing(h_name, "All Item Groups", 1)
+            _create_if_missing(h_name, "All Item Groups", 1, h_abbr)
         if s_name:
-            _create_if_missing(s_name, h_name or "All Item Groups", 1)
-        _create_if_missing(item_group, s_name or h_name or "All Item Groups", 0)
+            _create_if_missing(s_name, h_name or "All Item Groups", 1, s_abbr)
+        _create_if_missing(item_group, s_name or h_name or "All Item Groups", 0, g_abbr)
         
         return True
 
