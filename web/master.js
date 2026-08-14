@@ -77,9 +77,11 @@ async function loadMaster() {
     <td><span class="pill ${r.status === 'in_erp' ? 'erp' : ''}">${r.status === 'in_erp' ? 'in ERPNext' : esc(r.status)}</span>
       ${r.decodable ? '' : '<span class="pill dr">stale code</span>'}</td>
     <td class="num muted">${r.version_no || 1}</td>
-    <td><button class="ghost sm" data-edit="${esc(r.code)}">edit</button></td></tr>`).join('')
+    <td><button class="ghost sm" data-edit="${esc(r.code)}">edit</button>
+        ${r.status === 'confirmed' ? `<button class="primary sm" style="margin-left:4px" data-push="${esc(r.code)}">Push to ERP</button>` : ''}</td></tr>`).join('')
     || `<tr><td colspan="11" class="muted" style="padding:22px;text-align:center">no items match</td></tr>`;
   $$('[data-edit]').forEach(b => b.onclick = () => openItemModal(b.dataset.edit));
+  $$('[data-push]').forEach(b => b.onclick = () => openPushReviewModal(b.dataset.push));
 }
 
 ['mq', 'mstatus', 'mundec'].forEach(id => $('#' + id) && $('#' + id).addEventListener('input', () => {
@@ -297,3 +299,60 @@ $('#acClear') && ($('#acClear').onclick = () => {
   ['acUser', 'acCode', 'acFrom', 'acTo'].forEach(id => $('#' + id).value = '');
   loadActivity();
 });
+
+/* ───────────────────────────────────────────────────────── push review */
+let _currentPushItem = null;
+async function openPushReviewModal(code) {
+  const modal = document.getElementById('pushReviewModal');
+  if (!modal) return;
+  const d = await api('/api/v1/item/' + encodeURIComponent(code));
+  if (!d.ok) { toast(d.error, 'err'); return; }
+  const it = d.item;
+  _currentPushItem = it;
+  
+  const classCascade = `${esc(it.hname || '–')} → ${esc(it.sname || '–')} → ${esc(it.gname || '–')}`;
+  const specLine = (it.specs || []).filter(s => s.label)
+    .map(s => `${esc(s.label)} <b>${esc(s.value || '—')}</b>`).join(' · ') || 'no specifications on this group';
+    
+  document.getElementById('pushReviewContent').innerHTML = `
+    <div style="margin-bottom: 12px"><h3><code style="font-size:15px">${esc(it.code)}</code></h3>
+    <div>${esc(it.name || 'Unnamed Item')}</div></div>
+    <div class="sub">${classCascade} &nbsp;·&nbsp; ${specLine}</div>
+  `;
+  
+  const txd = await api('/api/v1/cascade/taxes');
+  const taxes = txd.taxes || [];
+  
+  const taxSel = document.getElementById('pushTaxSel');
+  taxSel.innerHTML = '<option value="">-- Select a Tax Template --</option>' + 
+    taxes.map(t => `<option value="${esc(t)}" ${t === it.tax ? 'selected' : ''}>${esc(t)}</option>`).join('');
+    
+  document.getElementById('pushHsnInp').value = it.hsn || '';
+  
+  document.getElementById('pushReviewCancel').onclick = () => modal.close();
+  document.getElementById('pushReviewConfirm').onclick = async () => {
+    const tax = taxSel.value;
+    const hsn = document.getElementById('pushHsnInp').value.trim();
+    if (!tax) {
+      toast('Tax Template is mandatory for ERPNext', 'err');
+      return;
+    }
+    
+    document.getElementById('pushReviewConfirm').textContent = 'Pushing...';
+    document.getElementById('pushReviewConfirm').disabled = true;
+    try {
+      const res = await post('/api/v1/item/' + encodeURIComponent(it.code) + '/push', { tax, hsn });
+      if (!res.ok) throw new Error(res.error || 'Failed to push');
+      toast('Successfully pushed to ERPNext', 'ok');
+      modal.close();
+      loadMaster();
+    } catch (e) {
+      toast(e.message, 'err');
+    } finally {
+      document.getElementById('pushReviewConfirm').textContent = 'Confirm Push';
+      document.getElementById('pushReviewConfirm').disabled = false;
+    }
+  };
+  
+  modal.showModal();
+}

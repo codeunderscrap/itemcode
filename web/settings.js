@@ -89,6 +89,7 @@ function render(settings) {
       <p class="hint">Item access only — no delete, no cancel, no transactions.</p>
       <div class="toggle"><input id="erpEnabled" type="checkbox"><label for="erpEnabled" style="margin:0">Enabled</label></div>
       <div class="toggle"><input id="erpDryRun" type="checkbox"><label for="erpDryRun" style="margin:0">Dry-run (no real writes)</label></div>
+      <div class="toggle"><input id="erpAutoPush" type="checkbox"><label for="erpAutoPush" style="margin:0">Auto Push immediately upon creation</label></div>
       <div class="row">
         <div class="field">
           <label for="erpUrl">Base URL</label>
@@ -129,6 +130,7 @@ function render(settings) {
   $('#model').value = settings['llm.model'] || '';
   $('#erpEnabled').checked = !!settings['erp.enabled'];
   $('#erpDryRun').checked = !!settings['erp.dry_run'];
+  $('#erpAutoPush').checked = !!settings['erp.auto_push'];
   $('#erpUrl').value = settings['erp.base_url'] || '';
   $('#erpUsername').value = settings['erp.username'] || '';
   $('#syncTimes').value = settings['sync.times'] || '09:00,17:00';
@@ -161,6 +163,7 @@ function render(settings) {
       'llm.model': $('#model').value,
       'erp.enabled': $('#erpEnabled').checked,
       'erp.dry_run': $('#erpDryRun').checked,
+      'erp.auto_push': $('#erpAutoPush').checked,
       'erp.base_url': $('#erpUrl').value,
       'erp.username': $('#erpUsername').value.trim(),
       'sync.times': $('#syncTimes').value,

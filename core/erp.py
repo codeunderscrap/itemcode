@@ -120,6 +120,7 @@ class ERP:
         self.user = cfg.get("username") or ""
         self.pwd = cfg.get("password") or ""
         self.dry_run = bool(cfg.get("dry_run", True))
+        self.auto_push = bool(cfg.get("auto_push", False))
         self.enabled = bool(cfg.get("enabled", False)) and bool(self.base)
         self.populate_specs = False
         self.api_key = ""
@@ -154,6 +155,7 @@ class ERP:
         self.api_key = D.get_setting(con, "erp.api_key", "") or ""
         self.api_secret = D.get_setting(con, "erp.api_secret", "") or ""
         self.dry_run = bool(D.get_setting(con, "erp.dry_run", self.dry_run))
+        self.auto_push = bool(D.get_setting(con, "erp.auto_push", self.auto_push))
         self.enabled = bool(D.get_setting(con, "erp.enabled", self.enabled)) and bool(self.base)
         self.populate_specs = bool(D.get_setting(con, "erp.populate_specs", False))
         return self
@@ -301,9 +303,18 @@ class ERP:
         return vals
 
     def validate_uom(self, uom, con=None):
+        """We never create UOMs on the fly. If ERPNext has no such UOM,
+        this returns False and the caller must reject the item.
+        Returns the exact UOM string from ERPNext (to fix case issues) or None."""
         if not uom:
-            return False
-        return uom in self._uom_set(con)
+            return None
+        uoms = self._uom_set(con)
+        if uom in uoms:
+            return uom
+        for euom in uoms:
+            if euom.lower() == uom.lower():
+                return euom
+        return None
 
     def validate_item_group(self, item_group, con=None):
         """We never create Item Groups and never push our taxonomy
@@ -455,8 +466,10 @@ class ERP:
             if not self.validate_item_group(item_group, con) and not self.dry_run:
                 raise ErpValidationError(
                     f"refused: Item Group {item_group!r} could not be automatically created in ERPNext.")
-            if not self.validate_uom(uom, con):
+            uom_correct = self.validate_uom(uom, con)
+            if not uom_correct:
                 raise ErpValidationError(f"refused: stock_uom {uom!r} is not a known UOM in ERPNext")
+            uom = uom_correct
             if hsn and not self.validate_hsn(hsn, con):
                 raise ErpValidationError(f"refused: gst_hsn_code {hsn!r} is not a known GST HSN Code in ERPNext")
         except ErpGuardrailError as e:
@@ -515,8 +528,10 @@ class ERP:
             payload = self._whitelist(fields, WRITABLE_FIELDS)
             if not payload:
                 return {"ok": False, "error": "no writable fields in request"}
-            if "stock_uom" in payload and not self.validate_uom(payload["stock_uom"], con):
+            uom_correct = self.validate_uom(payload["stock_uom"], con)
+            if not uom_correct:
                 raise ErpValidationError(f"refused: stock_uom {payload['stock_uom']!r} is not a known UOM in ERPNext")
+            payload["stock_uom"] = uom_correct
             if "gst_hsn_code" in payload and payload["gst_hsn_code"] and \
                     not self.validate_hsn(payload["gst_hsn_code"], con):
                 raise ErpValidationError(f"refused: gst_hsn_code {payload['gst_hsn_code']!r} is not known in ERPNext")

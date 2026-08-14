@@ -836,7 +836,7 @@ def commit(con, matcher, proposal, user, push_erp=False, erp=None):
     log(con, user, "issue-code", code, {"item": name, "group": group["name"]})
 
     result = {"code": code, "item_id": item_id, "erp": None}
-    if push_erp and erp:
+    if push_erp and erp and getattr(erp, "auto_push", False):
         extra = {}
         has_specs = False
         for i in range(1, 5):

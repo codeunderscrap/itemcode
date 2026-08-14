@@ -115,6 +115,27 @@
     <div class="pager"><button class="ghost sm" id="mPrev">‹ prev</button>
       <span id="mPage"></span><button class="ghost sm" id="mNext">next ›</button></div>
   </div>
+
+  <dialog id="pushReviewModal" class="modal">
+    <div class="modal-content" style="width: 500px; padding: 24px; background: var(--mm-panel); border: 1px solid var(--mm-border); border-radius: var(--mm-radius); color: var(--mm-text);">
+      <h2 style="margin-top: 0; margin-bottom: 16px;">Review & Push to ERP</h2>
+      <div id="pushReviewContent" style="margin-bottom: 20px; font-size: 13.5px; color: var(--mm-dim);"></div>
+      <div class="row" style="display: flex; gap: 14px; margin-bottom: 20px;">
+        <div class="field" style="flex: 1;">
+          <label style="display: block; font-size: 12.5px; color: var(--mm-dim); margin-bottom: 5px;">Tax Template (Required in ERP)</label>
+          <select id="pushTaxSel" style="width: 100%; font: inherit; background: var(--mm-navy); color: var(--mm-text); border: 1px solid var(--mm-border); border-radius: 7px; padding: 9px 11px; outline: none;"></select>
+        </div>
+        <div class="field" style="flex: 1;">
+          <label style="display: block; font-size: 12.5px; color: var(--mm-dim); margin-bottom: 5px;">HSN Code</label>
+          <input id="pushHsnInp" type="text" placeholder="e.g. 84821011" style="width: 100%; font: inherit; background: var(--mm-navy); color: var(--mm-text); border: 1px solid var(--mm-border); border-radius: 7px; padding: 9px 11px; outline: none;">
+        </div>
+      </div>
+      <div class="btnrow" style="display: flex; gap: 10px; justify-content: flex-end;">
+        <button class="ghost" id="pushReviewCancel" style="font: inherit; cursor: pointer; border-radius: 7px; padding: 9px 16px; background: transparent; border: 1px solid var(--mm-border); color: var(--mm-dim);">Cancel</button>
+        <button class="primary" id="pushReviewConfirm" style="font: inherit; cursor: pointer; border-radius: 7px; padding: 9px 16px; background: var(--mm-teal); color: #00202c; font-weight: 600; border: 1px solid transparent;">Confirm Push</button>
+      </div>
+    </div>
+  </dialog>
 </section>
 
 <!-- ══════════════════════════════════════════ DICTIONARY ══════════════ -->

@@ -137,6 +137,7 @@ DEFAULTS = {
     "match.threshold": 60,
     "erp.enabled": False,
     "erp.dry_run": True,
+    "erp.auto_push": False,
     "erp.base_url": "",
     "erp.username": "",
     "erp.password": "",
@@ -201,7 +202,7 @@ def post_settings(req):
             raise ApiError("VALIDATION", "match.threshold must be between 0 and 100")
         updates["match.threshold"] = t
 
-    for key in ("erp.enabled", "erp.dry_run"):
+    for key in ("erp.enabled", "erp.dry_run", "erp.auto_push"):
         if key in p:
             updates[key] = bool(p[key])
 

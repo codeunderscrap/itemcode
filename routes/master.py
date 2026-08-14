@@ -395,6 +395,56 @@ def item_update_v1(req):
                "note": "field edits never change the code"})
 
 
+def item_push_v1(req):
+    """POST /api/v1/item/<code>/push — manual push to ERPNext."""
+    from core.erp import ERP
+    from core.db import now
+    user = require_session(req)
+    code = (req.params.get("code") or "").upper()
+    con = ctx.con
+    
+    it = _one("SELECT * FROM item WHERE code=?", (code,))
+    if not it:
+        raise ApiError("NOT_FOUND", f"no item with code {code}")
+        
+    patch = req.body or {}
+    _apply_field_edit(con, it, patch, user)
+    
+    it = _one("""SELECT i.*, g.name AS gname
+                 FROM item i LEFT JOIN grp g ON g.id=i.grp_id
+                 WHERE i.code=?""", (code,))
+                 
+    erp = ERP().refresh(con)
+    if not erp.enabled:
+        raise ApiError("FAILED", "ERPNext integration is disabled")
+        
+    extra = {}
+    has_specs = False
+    for i in range(1, 6):
+        sid = it.get(f"s{i}" if i < 5 else "vend")
+        if sid:
+            val = con.execute("SELECT value FROM specval WHERE id=?", (sid,)).fetchone()
+            if val:
+                if i < 5:
+                    extra[f"item_specification_{i}"] = val["value"]
+                    has_specs = True
+                else:
+                    extra["item_vendor"] = val["value"]
+    if has_specs:
+        extra["has_item_specification"] = 1
+        
+    res = erp.create_item(code, it["name"], it["gname"], it.get("uom") or "Nos",
+                          it.get("hsn"), extra=extra, tax_template=it.get("tax"), con=con)
+                          
+    if not res.get("ok"):
+        raise ApiError("FAILED", f"ERPNext push failed: {res.get('error', 'unknown error')}")
+        
+    con.execute("UPDATE item SET status='in_erp', erp_synced_at=?, frozen=1 WHERE id=?",
+                (now(), it["id"]))
+    
+    return ok({"code": code, "status": "in_erp", "erp_res": res})
+
+
 def versions_v1(req):
     """GET /api/v1/versions?code=... — the full timeline, each entry already
     carrying its diff against the version before it."""
@@ -598,6 +648,7 @@ ROUTES = [
     ("GET", "/api/v1/item", item_list_v1),
     ("GET", "/api/v1/item/<code>", item_detail_v1),
     ("POST", "/api/v1/item/<code>/update", item_update_v1),
+    ("POST", "/api/v1/item/<code>/push", item_push_v1),
     ("GET", "/api/v1/versions", versions_v1),
     ("POST", "/api/v1/revert", revert_v1),
     ("GET", "/api/v1/audit", activity_v1),
