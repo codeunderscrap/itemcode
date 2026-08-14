@@ -427,7 +427,11 @@
         <label>Tax Template <span style="color:var(--mm-bad)">*</span></label>
         <select data-cas-tax="1" data-i="${c.i}">
           <option value="">— mandatory —</option>${taxOpts}
-        </select><span class="cc"></span></div>`;
+        </select><span class="cc"></span></div>
+        <div class="slot" style="margin-top:12px; border-top:1px solid var(--mm-b0); padding-top:12px;">
+        <label>HSN Code (if required)</label>
+        <input type="text" data-cas-hsn="1" data-i="${c.i}" value="${esc(c.sel.hsn || c.input.hsn || "")}" placeholder="Enter HSN Code">
+        <span class="cc"></span></div>`;
     }
 
     return `<div class="slots">${rows}${vrow}${trow}</div>`;
@@ -898,11 +902,36 @@
         c.sel.tax = t.value || null;
         updateCard(c);
       }
+      if (t.dataset.casHsn) {
+        c.sel.hsn = t.value.trim() || null;
+        updateCard(c);
+      }
       if (t.dataset.quickslot) {
         let val = t.value;
         if (val === "__new") { val = prompt("New value:"); if (!val) { t.value = ""; return; } }
         if (!val) return;
         await quickFill(c, { ["s" + t.dataset.quickslot]: val });
+      }
+    });
+
+    box.addEventListener("change", async (e) => {
+      const t = e.target;
+      if (t.dataset.casHsn) {
+        const i = +t.dataset.i;
+        if (!Number.isNaN(i) && state.cards[i]) {
+            state.cards[i].sel.hsn = t.value.trim() || null;
+        }
+        return;
+      }
+    });
+
+    box.addEventListener("input", async (e) => {
+      const t = e.target;
+      if (t.dataset.casHsn) {
+        const i = +t.dataset.i;
+        if (!Number.isNaN(i) && state.cards[i]) {
+            state.cards[i].sel.hsn = t.value.trim() || null;
+        }
       }
     });
 
