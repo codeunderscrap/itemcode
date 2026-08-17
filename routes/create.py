@@ -46,10 +46,12 @@ except ImportError:                                  # not landed yet
 # web/app.js still calls these directly. Do not change their shape.
 
 def resolve_one(req):
+    require_session(req)
     return R.resolve(ctx.con, ctx.matcher, req.body)
 
 
 def resolve_batch(req):
+    require_session(req)
     out = []
     for line in req.body.get("lines", []):
         out.append(R.resolve(ctx.con, ctx.matcher, {
@@ -61,6 +63,7 @@ def resolve_batch(req):
 
 
 def commit(req):
+    require_session(req)
     try:
         res = R.commit(ctx.con, ctx.matcher, req.body.get("proposal") or {}, req.user,
                        push_erp=bool(req.body.get("push_erp")), erp=ctx.erp)
@@ -70,6 +73,7 @@ def commit(req):
 
 
 def ingest(req):
+    require_session(req)
     if req.files:
         fn, data = next(iter(req.files.values()))
         lines, note = ING.ingest(data, fn)
@@ -79,6 +83,7 @@ def ingest(req):
 
 
 def alias_add(req):
+    require_session(req)
     from core.matcher import normalize
     p = req.body
     con = ctx.con
