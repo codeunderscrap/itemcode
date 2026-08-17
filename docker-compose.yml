@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  itemcode-studio:
+    build: .
+    container_name: itemcode-studio
+    ports:
+      - "8756:8756"
+    volumes:
+      - ./data:/app/data
+      - ./config.json:/app/config.json
+    restart: unless-stopped
+    environment:
+      - PYTHONUNBUFFERED=1
