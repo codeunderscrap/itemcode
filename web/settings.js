@@ -118,6 +118,24 @@ function render(settings) {
       </div>
     </div>
 
+    <div class="card">
+      <h2>OCR Engine</h2>
+      <p class="hint">Decouple heavy OCR computations to keep main web server responsive and stable.</p>
+      <div class="row">
+        <div class="field">
+          <label for="ocrProvider">OCR Provider</label>
+          <select id="ocrProvider">
+            <option value="api">Centralized Standalone API (Recommended)</option>
+            <option value="local">Local Container Execution (Heavy RAM/CPU)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="ocrUrl">OCR API Endpoint</label>
+          <input id="ocrUrl" placeholder="http://localhost:8757/ocr">
+        </div>
+      </div>
+    </div>
+
     <div class="btnrow">
       <button class="primary" id="saveBtn" type="button">Save changes</button>
       <span class="savemsg" id="saveMsg"></span>
@@ -134,6 +152,8 @@ function render(settings) {
   $('#erpUrl').value = settings['erp.base_url'] || '';
   $('#erpUsername').value = settings['erp.username'] || '';
   $('#syncTimes').value = settings['sync.times'] || '09:00,17:00';
+  $('#ocrProvider').value = settings['ocr.provider'] || 'api';
+  $('#ocrUrl').value = settings['ocr.api_url'] || 'http://localhost:8757/ocr';
 
   $('#provider').addEventListener('change', () => {
     if (!$('#model').value) $('#model').placeholder = PROVIDER_MODEL_HINT[$('#provider').value] || '';
@@ -167,6 +187,8 @@ function render(settings) {
       'erp.base_url': $('#erpUrl').value,
       'erp.username': $('#erpUsername').value.trim(),
       'sync.times': $('#syncTimes').value,
+      'ocr.provider': $('#ocrProvider').value,
+      'ocr.api_url': $('#ocrUrl').value.trim(),
     };
     const typedKey = $('#apiKey').value; // '' means "leave unchanged" unless explicitly cleared below
     if (typedKey.trim()) body['llm.api_key'] = typedKey.trim();

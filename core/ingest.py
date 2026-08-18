@@ -287,6 +287,45 @@ _OCR_ENGINE = None
 _OCR_UNAVAILABLE = None  # once we know it can't load, remember why and stop retrying
 
 
+def _get_setting(key, default=None):
+    try:
+        from core.context import ctx
+        import core.db as D
+        if hasattr(ctx, "con") and ctx.con is not None:
+            return D.get_setting(ctx.con, key, default)
+    except Exception:
+        pass
+    return default
+
+
+def _post_ocr_api(url, image_bytes):
+    import urllib.request
+    import uuid
+    import ssl
+    import json
+    
+    boundary = f"boundary-{uuid.uuid4()}"
+    headers = {"Content-Type": f"multipart/form-data; boundary={boundary}"}
+    
+    body = (
+        f"--{boundary}\r\n"
+        f'Content-Disposition: form-data; name="file"; filename="page.jpg"\r\n'
+        f"Content-Type: image/jpeg\r\n\r\n"
+    ).encode("utf-8") + image_bytes + f"\r\n--{boundary}--\r\n".encode("utf-8")
+    
+    req = urllib.request.Request(url, data=body, headers=headers, method="POST")
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    
+    with urllib.request.urlopen(req, timeout=30, context=ssl_context) as res:
+        resp = json.loads(res.read().decode("utf-8"))
+        if resp.get("ok"):
+            return "\n".join(resp.get("lines", [])), ""
+        else:
+            return "", f"API Error: {resp.get('error', 'unknown error')}"
+
+
 def _get_ocr_engine():
     global _OCR_ENGINE, _OCR_UNAVAILABLE
     if _OCR_ENGINE is not None:
@@ -316,11 +355,32 @@ def _ocr_array(img_array):
     lines = []
     for page in (result or []):
         for det in (page or []):
-            # det = [ [ [x,y]*4 ], (text, confidence) ]
             text = det[1][0]
             if text:
                 lines.append(text)
     return "\n".join(lines), ""
+
+
+def _ocr_image_bytes(image_bytes):
+    provider = _get_setting("ocr.provider", "api")
+    if provider == "api":
+        url = _get_setting("ocr.api_url", "http://localhost:8757/ocr")
+        try:
+            return _post_ocr_api(url, image_bytes)
+        except Exception as e:
+            return "", f"Centralized OCR connection failed ({e.__class__.__name__}: {e})"
+    else:
+        try:
+            import cv2
+            import numpy as np
+            nparr = np.frombuffer(image_bytes, np.uint8)
+            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            if img is None:
+                return "", "Could not decode image for local OCR"
+            return _ocr_array(img)
+        except Exception as e:
+            return "", f"Local OCR failed to load/run ({e.__class__.__name__}: {e})"
+
 
 
 def _pixmap_to_array(pix):
@@ -394,7 +454,7 @@ def from_pdf(data):
                     notes.append(f"skipped OCR on page {pno} (max 5 pages OCR limit exceeded to prevent timeout)")
                     continue
                 pix = page.get_pixmap(dpi=220)
-                ocr, note = _ocr_array(_pixmap_to_array(pix))
+                ocr, note = _ocr_image_bytes(pix.tobytes("jpg"))
                 if pno == 1 and ocr.strip():
                     m = _DOC_TYPE_NON_INVOICE.search(ocr[:2000])
                     if m:
@@ -411,13 +471,7 @@ def from_pdf(data):
 
 
 def from_image(data):
-    try:
-        import numpy as np
-        from PIL import Image
-    except ImportError:
-        return [], "Pillow not installed"
-    img = Image.open(io.BytesIO(data)).convert("RGB")
-    txt, note = _ocr_array(np.array(img))
+    txt, note = _ocr_image_bytes(data)
     m = _DOC_TYPE_NON_INVOICE.search(txt[:2000])
     if m:
         return [], f"Detected non-invoice document ({m.group(0).title()}) - please upload a Tax Invoice."

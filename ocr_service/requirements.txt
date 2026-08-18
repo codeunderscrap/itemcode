@@ -1,0 +1,8 @@
+fastapi==0.115.8
+uvicorn==0.34.0
+python-multipart==0.0.9
+paddlepaddle==2.6.2
+paddleocr==2.9.1
+opencv-python-headless==4.11.0.86
+numpy==1.26.4
+setuptools

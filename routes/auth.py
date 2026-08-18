@@ -142,6 +142,8 @@ DEFAULTS = {
     "erp.username": "",
     "erp.password": "",
     "sync.times": "09:00,17:00",
+    "ocr.provider": "api",
+    "ocr.api_url": "http://localhost:8757/ocr",
 }
 SECRET_KEYS = {"llm.api_key", "erp.password"}
 MASK = "••••••••"
@@ -221,6 +223,15 @@ def post_settings(req):
 
     if "sync.times" in p:
         updates["sync.times"] = (p["sync.times"] or "").strip() or DEFAULTS["sync.times"]
+
+    if "ocr.provider" in p:
+        prov = p["ocr.provider"]
+        if prov not in ("local", "api"):
+            raise ApiError("VALIDATION", "ocr.provider must be 'local' or 'api'")
+        updates["ocr.provider"] = prov
+
+    if "ocr.api_url" in p:
+        updates["ocr.api_url"] = (p["ocr.api_url"] or "").strip()
 
     # figure out where the key/provider land AFTER this update, before
     # deciding match.mode - this is what "until a key is present, match.mode
