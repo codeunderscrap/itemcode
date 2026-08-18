@@ -1,6 +1,6 @@
 """Provider-neutral LLM client for the resolver (Bharat Router).
 
-Hardcoded to use Bharat Router API with Krutrim-spectre-v2 model.
+Hardcoded to use Bharat Router API with GPT-OSS 120B model (auto-discovered).
 Implements a 100 calls/day global rate limit.
 """
 import hashlib
@@ -22,13 +22,13 @@ _RL_LOCK = threading.Lock()
 DAILY_LIMIT = 100
 
 # Model candidates tried in order. The first one that works is cached.
+# These are Bharat Router model IDs (NOT provider-prefixed).
 _MODEL_CANDIDATES = [
-    "krutrim/Krutrim-spectre-v2",
-    "krutrim/krutrim-spectre-v2",
-    "krutrim/spectre-v2",
-    "google/gemini-2.0-flash",
-    "meta-llama/llama-3.1-8b-instruct",
-    "mistralai/mistral-7b-instruct",
+    "gpt-oss-120b",
+    "gpt-oss-20b",
+    "qwen3.5-9b",
+    "llama-3.1-8b-instruct",
+    "qwen2.5-7b-instruct",
 ]
 _MODEL_LOCK = threading.Lock()
 _discovered_model = None  # set on first successful probe

@@ -323,7 +323,7 @@ def test_llm_key(provider, api_key, model):
             req = urllib.request.Request(
                 "https://api.bharatrouter.com/v1/chat/completions",
                 data=json.dumps({
-                    "model": model or "krutrim/Krutrim-spectre-v2",
+                    "model": model or "gpt-oss-120b",
                     "max_tokens": 1,
                     "messages": [{"role": "user", "content": "hi"}],
                 }).encode(),

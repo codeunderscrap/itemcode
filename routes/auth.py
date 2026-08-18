@@ -251,7 +251,7 @@ def test_llm(req):
     key = (p.get("llm.api_key") or "").strip()
     if not key or key == MASK:
         key = D.get_setting(con, "llm.api_key", "")
-    success, detail = A.test_llm_key("bharatrouter", key, "krutrim/Krutrim-spectre-v2")
+    success, detail = A.test_llm_key("bharatrouter", key, "gpt-oss-120b")
     return ok({"success": success, "detail": detail})
 
 

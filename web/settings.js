@@ -56,7 +56,7 @@ function render(settings) {
 
     <div class="card">
       <h2>LLM Settings</h2>
-      <p class="hint">Model: Krutrim Spectre v2 via Bharat Router</p>
+      <p class="hint">Model: GPT-OSS 120B via Bharat Router (India-hosted)</p>
       <div class="row">
         <div class="field">
           <label for="apiKey">Bharat Router API key</label>
