@@ -746,6 +746,7 @@
       }
     }
     c.submitting = false;
+    updateCard(c);
   }
 
   async function pushCardToErp(c) {
