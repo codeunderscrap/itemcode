@@ -214,7 +214,36 @@ def health(req):
     })
 
 
+def debug_env(req):
+    import sys
+    import os
+    import importlib.metadata
+    
+    ocr_err = None
+    try:
+        from paddleocr import PaddleOCR
+    except Exception as e:
+        import traceback
+        ocr_err = f"{e.__class__.__name__}: {e}\n{traceback.format_exc()}"
+        
+    pkgs = []
+    try:
+        pkgs = [f"{p.metadata['Name']}=={p.version}" for p in importlib.metadata.distributions()]
+    except Exception as e:
+        pkgs = [str(e)]
+        
+    return ok({
+        "python_version": sys.version,
+        "python_executable": sys.executable,
+        "sys_path": sys.path,
+        "cwd": os.getcwd(),
+        "ocr_error": ocr_err,
+        "packages": sorted(pkgs),
+    })
+
+
 ROUTES = [
     ("GET", "/api/docs", docs),
     ("GET", "/api/v1/health", health),
+    ("GET", "/api/v1/debug/env", debug_env),
 ]
