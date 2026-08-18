@@ -30,6 +30,7 @@ def ping(req):
 
 
 def pull(req):
+    A.require_session(req)
     con, erpc = ctx.con, ctx.erp
     try:
         items = erpc.pull_items(con=con)
