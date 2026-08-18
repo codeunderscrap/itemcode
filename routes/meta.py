@@ -218,13 +218,27 @@ def debug_env(req):
     import sys
     import os
     import importlib.metadata
+    import urllib.request
+    import json
+    import ssl
     
-    ocr_err = None
+    from core import db as D
+    from core.context import ctx
+    
+    ocr_status = "Not Configured"
     try:
-        from paddleocr import PaddleOCR
+        url = D.get_setting(ctx.con, "ocr.api_url") if ctx.con else None
+        if not url:
+            url = "http://ocr-service:8757/ocr"
+        health_url = url.replace("/ocr", "/health")
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+        with urllib.request.urlopen(health_url, timeout=2, context=ssl_context) as res:
+            resp = json.loads(res.read().decode("utf-8"))
+            ocr_status = f"Standalone service is up and {resp.get('status', 'unknown')}"
     except Exception as e:
-        import traceback
-        ocr_err = f"{e.__class__.__name__}: {e}\n{traceback.format_exc()}"
+        ocr_status = f"Offline/Error ({e.__class__.__name__}: {e})"
         
     pkgs = []
     try:
@@ -237,7 +251,7 @@ def debug_env(req):
         "python_executable": sys.executable,
         "sys_path": sys.path,
         "cwd": os.getcwd(),
-        "ocr_error": ocr_err,
+        "ocr_status": ocr_status,
         "packages": sorted(pkgs),
     })
 

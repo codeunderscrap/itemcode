@@ -279,13 +279,8 @@ def from_text(text):
 
 
 # ------------------------------------------------------------------- OCR
-# PaddleOCR is expensive to construct (it loads detection + recognition +
-# angle-classification models) - built once, lazily, on first real use, and
-# reused for the rest of the process. Constructing it at import time would
-# slow down every server start whether or not anyone ever uploads a scan.
-_OCR_ENGINE = None
-_OCR_UNAVAILABLE = None  # once we know it can't load, remember why and stop retrying
-
+# OCR processing is decoupled to a centralized standalone service to keep the
+# web application extremely lightweight and memory-efficient.
 
 def _get_setting(key, default=None):
     try:
@@ -326,73 +321,16 @@ def _post_ocr_api(url, image_bytes):
             return "", f"API Error: {resp.get('error', 'unknown error')}"
 
 
-def _get_ocr_engine():
-    global _OCR_ENGINE, _OCR_UNAVAILABLE
-    if _OCR_ENGINE is not None:
-        return _OCR_ENGINE, None
-    if _OCR_UNAVAILABLE is not None:
-        return None, _OCR_UNAVAILABLE
-    try:
-        from paddleocr import PaddleOCR
-        _OCR_ENGINE = PaddleOCR(use_angle_cls=True, lang="en", show_log=False)
-        return _OCR_ENGINE, None
-    except Exception as e:                                        # noqa: BLE001
-        _OCR_UNAVAILABLE = (f"OCR unavailable ({e.__class__.__name__}) - "
-                             f"pip install paddlepaddle paddleocr")
-        return None, _OCR_UNAVAILABLE
-
-
-def _ocr_array(img_array):
-    """img_array: an HxWx3 (or HxWx4) numpy array, e.g. from a PyMuPDF
-    pixmap or a decoded photo. Returns (text, note)."""
-    engine, err = _get_ocr_engine()
-    if engine is None:
-        return "", err
-    try:
-        result = engine.ocr(img_array, cls=True)
-    except Exception as e:                                        # noqa: BLE001
-        return "", f"OCR failed ({e.__class__.__name__}: {e})"
-    lines = []
-    for page in (result or []):
-        for det in (page or []):
-            text = det[1][0]
-            if text:
-                lines.append(text)
-    return "\n".join(lines), ""
-
-
 def _ocr_image_bytes(image_bytes):
     provider = _get_setting("ocr.provider", "api")
     if provider == "api":
-        url = _get_setting("ocr.api_url", "http://localhost:8757/ocr")
+        url = _get_setting("ocr.api_url", "http://ocr-service:8757/ocr")
         try:
             return _post_ocr_api(url, image_bytes)
         except Exception as e:
             return "", f"Centralized OCR connection failed ({e.__class__.__name__}: {e})"
     else:
-        try:
-            import cv2
-            import numpy as np
-            nparr = np.frombuffer(image_bytes, np.uint8)
-            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-            if img is None:
-                return "", "Could not decode image for local OCR"
-            return _ocr_array(img)
-        except Exception as e:
-            return "", f"Local OCR failed to load/run ({e.__class__.__name__}: {e})"
-
-
-
-def _pixmap_to_array(pix):
-    """fitz.Pixmap -> numpy array, RGB. PaddleOCR reads numpy arrays or file
-    paths directly; going through PIL isn't necessary."""
-    import numpy as np
-    if pix.alpha:
-        pix = fitz_module().Pixmap(pix, 0)  # drop alpha channel
-    arr = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, pix.n)
-    if pix.n == 1:  # greyscale
-        arr = np.repeat(arr, 3, axis=2)
-    return arr
+        return "", "Local OCR engine has been removed from this container. Please configure and use the Standalone OCR API provider."
 
 
 def fitz_module():
