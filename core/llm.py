@@ -21,6 +21,18 @@ REASONS = ("no_key", "rate_limited", "timeout", "bad_json", "provider_error")
 _RL_LOCK = threading.Lock()
 DAILY_LIMIT = 100
 
+# Model candidates tried in order. The first one that works is cached.
+_MODEL_CANDIDATES = [
+    "krutrim/Krutrim-spectre-v2",
+    "krutrim/krutrim-spectre-v2",
+    "krutrim/spectre-v2",
+    "google/gemini-2.0-flash",
+    "meta-llama/llama-3.1-8b-instruct",
+    "mistralai/mistral-7b-instruct",
+]
+_MODEL_LOCK = threading.Lock()
+_discovered_model = None  # set on first successful probe
+
 class _Unavailable(Exception):
     def __init__(self, reason):
         self.reason = reason
@@ -33,9 +45,55 @@ def get_config(con, cfg=None):
     return {
         "provider": "bharatrouter",
         "api_key": api_key.strip(),
-        "model": "krutrim/Krutrim-spectre-v2",
+        "model": _get_model(),
         "base_url": "https://api.bharatrouter.com/v1",
     }
+
+
+def _get_model():
+    """Return the cached discovered model name, defaulting to the first candidate."""
+    global _discovered_model
+    with _MODEL_LOCK:
+        return _discovered_model or _MODEL_CANDIDATES[0]
+
+
+def probe_model(api_key):
+    """Try each candidate model with a cheap 1-token request.
+    Caches and returns the first one that works, or None if all fail."""
+    global _discovered_model
+    base = "https://api.bharatrouter.com/v1/chat/completions"
+    headers = {
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0 (compatible; ItemCodeStudio/1.0)",
+        "Authorization": f"Bearer {api_key}",
+    }
+    with _MODEL_LOCK:
+        if _discovered_model:
+            return _discovered_model
+        for candidate in _MODEL_CANDIDATES:
+            payload = json.dumps({
+                "model": candidate, "max_tokens": 1,
+                "messages": [{"role": "user", "content": "hi"}]
+            }).encode()
+            try:
+                req = urllib.request.Request(base, data=payload, headers=headers)
+                with urllib.request.urlopen(req, timeout=10) as r:
+                    r.read()
+                _discovered_model = candidate
+                print(f"[llm] discovered working model: {candidate}")
+                return candidate
+            except urllib.error.HTTPError as e:
+                if e.code == 404:
+                    print(f"[llm] model not found: {candidate}")
+                    continue
+                if e.code == 403:
+                    # Cloudflare or auth error — stop trying
+                    print(f"[llm] auth/cloudflare error probing {candidate}: {e.code}")
+                    break
+            except Exception as ex:
+                print(f"[llm] probe error for {candidate}: {ex}")
+                break
+        return None
 
 def get_mode(con, cfg=None):
     return (D.get_setting(con, "match.mode", None)
@@ -149,8 +207,14 @@ def _extract_json(text):
 # --------------------------------------------------------------- backends
 def _bharatrouter(c, prompt):
     base = c["base_url"]
+    # Probe and cache the working model on first call
+    model = c["model"]
+    if c["api_key"]:
+        discovered = probe_model(c["api_key"])
+        if discovered:
+            model = discovered
     d = _post(f"{base}/chat/completions",
-              {"model": c["model"], "max_tokens": 4000, "temperature": 0,
+              {"model": model, "max_tokens": 4000, "temperature": 0,
                "messages": [{"role": "user", "content": prompt}]},
               {"Authorization": f"Bearer {c['api_key']}"})
     try:

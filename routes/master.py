@@ -637,6 +637,23 @@ def export_v1(req):
     return ok({"path": p, "file": os.path.basename(p)})
 
 
+def erp_items_v1(req):
+    """GET /api/v1/erp-items — fetches all items live from ERPNext and returns
+    them so the master table can show items that exist in ERP but may not yet
+    exist in the local DB."""
+    require_session(req)
+    from core.erp import ERP
+    erp = ERP().refresh(ctx.con)
+    if not erp.enabled:
+        return ok({"items": [], "note": "ERPNext integration is disabled"})
+    try:
+        erp.login()
+        items = erp.pull_items(limit=5000, con=ctx.con)
+        return ok({"items": items, "count": len(items)})
+    except Exception as e:  # noqa: BLE001
+        return ok({"items": [], "error": f"{e.__class__.__name__}: {e}"})
+
+
 def download_v1(req):
     require_session(req)
     return download(req)
@@ -673,4 +690,5 @@ ROUTES = [
     ("GET", "/api/v1/vacancies", vacancies_v1),
     ("GET", "/api/v1/export", export_v1),
     ("GET", "/api/v1/download/<file>", download_v1),
+    ("GET", "/api/v1/erp-items", erp_items_v1),
 ]

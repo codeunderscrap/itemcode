@@ -51,6 +51,35 @@ async function populateGroupOptions() {
 }
 
 /* ─────────────────────────────────────────────────────────────── list */
+// Cache ERP items across page changes (re-fetched when tab first loads)
+let _erpItemsCache = null;
+let _erpItemsFetching = false;
+
+async function fetchErpItems() {
+  if (_erpItemsFetching) return;
+  _erpItemsFetching = true;
+  try {
+    const d = await api('/api/v1/erp-items').catch(() => ({ items: [] }));
+    _erpItemsCache = d.items || [];
+  } finally {
+    _erpItemsFetching = false;
+  }
+}
+
+function renderErpOnlyRow(item) {
+  return `<tr style="opacity:.8;background:var(--panel2,#1a1f2e)">
+    <td><code>${esc(item.name || '')}</code></td>
+    <td>${esc(item.item_name || item.name || '')}</td>
+    <td><span class="muted">—</span></td>
+    <td>${esc(item.item_group || '–')}</td>
+    <td><span class="muted">—</span></td>
+    <td>—</td><td>${esc(item.stock_uom || '')}</td><td>—</td>
+    <td><span class="pill erp">ERP only</span></td>
+    <td class="num muted">—</td>
+    <td><span class="muted" style="font-size:11px">view in ERP</span></td>
+  </tr>`;
+}
+
 async function loadMaster() {
   if (!$('#mHead').children.length || $('#mHead').children.length === 1) {
     populateHeadOptions();
@@ -64,10 +93,33 @@ async function loadMaster() {
   if (mstate.sub) params.subhead_id = mstate.sub;
   if (mstate.group) params.group_id = mstate.group;
   const q = new URLSearchParams(params);
-  const d = await api('/api/v1/item?' + q);
-  $('#mTotal').textContent = `${d.total.toLocaleString()} items`;
+
+  // Fetch local items + trigger ERP fetch (non-blocking)
+  const [d] = await Promise.all([
+    api('/api/v1/item?' + q),
+    _erpItemsCache === null ? fetchErpItems() : Promise.resolve(),
+  ]);
+
+  // Build set of codes already in local DB for deduplication
+  const localCodes = new Set(d.rows.map(r => (r.code || '').toUpperCase()));
+
+  // Filter ERP-only items (not in local DB) — apply search filter too
+  const qStr = ($('#mq').value || '').toLowerCase();
+  const erpOnly = (_erpItemsCache || []).filter(item => {
+    const code = (item.name || '').toUpperCase();
+    if (localCodes.has(code)) return false;  // already shown in local rows
+    if (qStr && !code.toLowerCase().includes(qStr) &&
+        !(item.item_name || '').toLowerCase().includes(qStr)) return false;
+    return true;
+  });
+
+  const totalCount = d.total + erpOnly.length;
+  const erpCount = (_erpItemsCache || []).length;
+  $('#mTotal').textContent = `${d.total.toLocaleString()} items` +
+    (erpCount ? ` · ${erpOnly.length} ERP-only` : '');
   $('#mPage').textContent = `page ${d.page} of ${Math.max(1, Math.ceil(d.total / d.size))}`;
-  $('#mTable tbody').innerHTML = d.rows.map(r => `<tr>
+
+  const localRows = d.rows.map(r => `<tr>
     <td><code>${esc(r.code)}</code></td>
     <td>${esc(r.name)}</td>
     <td>${esc(r.hname || '–')}<br><span class="muted">${esc(r.sname || '')}</span></td>
@@ -78,8 +130,13 @@ async function loadMaster() {
       ${r.decodable ? '' : '<span class="pill dr">stale code</span>'}</td>
     <td class="num muted">${r.version_no || 1}</td>
     <td><button class="ghost sm" data-edit="${esc(r.code)}">edit</button>
-        ${r.status === 'confirmed' ? `<button class="primary sm" style="margin-left:4px" data-push="${esc(r.code)}">Push to ERP</button>` : ''}</td></tr>`).join('')
-    || `<tr><td colspan="11" class="muted" style="padding:22px;text-align:center">no items match</td></tr>`;
+        ${r.status === 'confirmed' ? `<button class="primary sm" style="margin-left:4px" data-push="${esc(r.code)}">Push to ERP</button>` : ''}</td></tr>`);
+
+  const erpRows = erpOnly.map(renderErpOnlyRow);
+
+  const allRows = [...localRows, ...erpRows];
+  $('#mTable tbody').innerHTML = allRows.join('') ||
+    `<tr><td colspan="11" class="muted" style="padding:22px;text-align:center">no items match</td></tr>`;
   $$('[data-edit]').forEach(b => b.onclick = () => openItemModal(b.dataset.edit));
   $$('[data-push]').forEach(b => b.onclick = () => openPushReviewModal(b.dataset.push));
 }
