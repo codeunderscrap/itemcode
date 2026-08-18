@@ -353,6 +353,7 @@ def from_pdf(data):
         doc = fitz.open(stream=data, filetype="pdf")
     except Exception as e:                                        # noqa: BLE001
         return [], f"could not open PDF ({e.__class__.__name__}: {e})"
+    ocr_pages = 0
     try:
         for pno, page in enumerate(doc, 1):
             if pno == 1:
@@ -388,6 +389,10 @@ def from_pdf(data):
                         lines.append(p)
                     got = True
             if not got:
+                ocr_pages += 1
+                if ocr_pages > 5:
+                    notes.append(f"skipped OCR on page {pno} (max 5 pages OCR limit exceeded to prevent timeout)")
+                    continue
                 pix = page.get_pixmap(dpi=220)
                 ocr, note = _ocr_array(_pixmap_to_array(pix))
                 if pno == 1 and ocr.strip():
