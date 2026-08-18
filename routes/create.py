@@ -147,8 +147,9 @@ def resolve_preview(req):
 
     blockers = []
     slots, detail = [], []
-    for slot in (1, 2, 3, 4):
-        label = labels.get(str(slot))
+    for i in range(1, 5):
+        slot = str(i)
+        label = labels.get(slot) or f"Spec {slot}"
         sel = b.get(f"s{slot}")
         if not label:
             slots.append(None)
@@ -172,20 +173,20 @@ def resolve_preview(req):
             detail.append({"slot": slot, "label": label, "code": sv["code2"], "value": sv["value"]})
 
     vend, vend_detail = None, None
-    if labels.get("vendor"):
-        selv = b.get("vendor")
-        if not selv:
-            vend_detail = {"label": labels["vendor"], "code": None, "value": None}
-        elif isinstance(selv, str) and selv.startswith("new:"):
-            vend = C.next_spec_code(con, g["id"], 5)
-            vend_detail = {"label": labels["vendor"], "code": vend, "value": selv[4:], "pending_new": True}
-        else:
-            sv = D.one(con, "SELECT value,code2 FROM specval WHERE id=? AND grp_id=? AND slot=5",
-                      (int(selv), g["id"]))
-            if not sv:
-                raise ApiError("VALIDATION", "unknown vendor chosen")
-            vend = sv["code2"]
-            vend_detail = {"label": labels["vendor"], "code": vend, "value": sv["value"]}
+    vlabel = labels.get("vendor") or "Vendor"
+    selv = b.get("vendor")
+    if not selv:
+        vend_detail = {"label": vlabel, "code": None, "value": None}
+    elif isinstance(selv, str) and selv.startswith("new:"):
+        vend = C.next_spec_code(con, g["id"], 5)
+        vend_detail = {"label": vlabel, "code": vend, "value": selv[4:], "pending_new": True}
+    else:
+        sv = D.one(con, "SELECT value,code2 FROM specval WHERE id=? AND grp_id=? AND slot=5",
+                  (int(selv), g["id"]))
+        if not sv:
+            raise ApiError("VALIDATION", "unknown vendor chosen")
+        vend = sv["code2"]
+        vend_detail = {"label": vlabel, "code": vend, "value": sv["value"]}
 
     code = C.assemble(g["head_code"], g["sub_code"], g["code3"], slots, vend)
     free = C.code_is_free(con, code)

@@ -653,8 +653,7 @@
   function buildManualPhase3(c) {
     const slots = [];
     for (let slot = 1; slot <= 4; slot++) {
-      const label = c.sel.labels[String(slot)];
-      if (!label) { slots.push({ slot, label: null }); continue; }
+      const label = c.sel.labels[String(slot)] || `Spec ${slot}`;
       const chosen = c.sel.slots[slot];
       if (!chosen) { slots.push({ slot, label, specval_id: null, code: null }); continue; }
       if (String(chosen).startsWith("new:")) {
@@ -666,16 +665,14 @@
       }
     }
     let vendor = null;
-    const vlabel = c.sel.labels.vendor;
-    if (vlabel) {
-      const chosenV = c.sel.vendor;
-      if (chosenV && String(chosenV).startsWith("new:")) {
-        const pv = (c.previewRes && c.previewRes.vendor) || {};
-        vendor = { label: vlabel, value: chosenV.slice(4), proposed_code: pv.code, code: pv.code };
-      } else if (chosenV) {
-        const opt = (c.sel.vendorOptions || []).find((o) => String(o.id) === String(chosenV));
-        vendor = { label: vlabel, specval_id: opt ? opt.id : null, code: opt ? opt.code2 : null, value: opt ? opt.value : null };
-      }
+    const vlabel = c.sel.labels.vendor || "Vendor";
+    const chosenV = c.sel.vendor;
+    if (chosenV && String(chosenV).startsWith("new:")) {
+      const pv = (c.previewRes && c.previewRes.vendor) || {};
+      vendor = { label: vlabel, value: chosenV.slice(4), proposed_code: pv.code, code: pv.code };
+    } else if (chosenV) {
+      const opt = (c.sel.vendorOptions || []).find((o) => String(o.id) === String(chosenV));
+      vendor = { label: vlabel, specval_id: opt ? opt.id : null, code: opt ? opt.code2 : null, value: opt ? opt.value : null };
     }
     return { slots, vendor };
   }

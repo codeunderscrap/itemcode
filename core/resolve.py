@@ -785,15 +785,12 @@ def commit(con, matcher, proposal, user, push_erp=False, erp=None):
     # spec values, minting any that are new
     slot_codes, slot_ids = [], {}
     for s in p3.get("slots", []):
-        if not s.get("label"):
+        sid, scode = s.get("specval_id"), s.get("code")
+        val = s.get("chosen_value") or s.get("value") or hints.get(f"s{s['slot']}_new")
+        if not sid and not val:
             slot_codes.append(None)
             continue
-        sid, scode = s.get("specval_id"), s.get("code")
         if not sid:
-            val = s.get("chosen_value") or s.get("value") or hints.get(f"s{s['slot']}_new")
-            if not val:
-                slot_codes.append(None)
-                continue
             scode = s.get("proposed_code") or C.next_spec_code(con, group["id"], s["slot"])
             cur = con.execute(
                 "INSERT OR IGNORE INTO specval(grp_id,slot,value,code2) VALUES(?,?,?,?)",
