@@ -511,11 +511,21 @@
     }
 
     if (c.submitted) {
+      const isPushPending = ERP_ENABLED && !c.pushedToErp;
       return `<div class="card" data-i="${c.i}">
         <div class="top"><div><div class="src">${esc(c.line.description)}</div>
-          <div class="sub">${tags}issued</div></div>
+          <div class="sub">${tags}issued ${c.pushedToErp ? "· synced to ERP" : ""}</div></div>
           <span class="badge b-done">${esc(c.submittedCode)}</span></div>
         ${c.learnedAlias ? `<div class="ce-tag learn">learned — this wording now matches "${esc(c.learnedAlias)}" automatically next time</div>` : ""}
+        ${isPushPending
+          ? `<div class="codebar" style="margin-top:12px; border-top:1px solid var(--mm-b0,#262f3d); padding-top:12px;">
+              <span class="muted" style="font-size:13px; color:var(--tx3,#687986);">Not synced to ERPNext yet.</span>
+              <span class="grow"></span>
+              <button class="primary sm" data-act="push-card" data-i="${c.i}" ${c.pushing ? "disabled" : ""}>
+                ${c.pushing ? "Pushing..." : "Push to ERP"}
+              </button>
+             </div>`
+          : ""}
       </div>`;
     }
 
@@ -718,6 +728,7 @@
       }
       const d = await postJSON("/api/v1/commit", { proposal, idempotency_key: c.idemKey, push_erp: !!ERP_ENABLED });
       c.submitted = true; c.submittedCode = d.code;
+      c.pushedToErp = !!(d.erp && d.erp.ok);
       toast(d.idempotent ? `${d.code} — already issued (that click was caught)` : `${d.code} issued`, "ok");
 
       if (c.editing && c.sel.groupId && String(c.sel.groupId) !== String(originalGroupId || "")) {
@@ -735,7 +746,23 @@
       }
     }
     c.submitting = false;
+  }
+
+  async function pushCardToErp(c) {
+    if (c.pushing) return;
+    c.pushing = true;
     updateCard(c);
+    try {
+      const res = await postJSON(`/api/v1/item/${encodeURIComponent(c.submittedCode)}/push`, {});
+      if (!res.ok) throw new Error(res.error || "Failed to push");
+      c.pushedToErp = true;
+      toast(`${c.submittedCode} synced to ERPNext`, "ok");
+    } catch (e) {
+      toast(e.message || "Failed to push to ERPNext", "err");
+    } finally {
+      c.pushing = false;
+      updateCard(c);
+    }
   }
 
   function showConflictModal(c, detail) {
@@ -789,6 +816,7 @@
       if (act === "edit") { await beginEdit(c); return; }
       if (act === "cancel-edit") { c.editing = false; c.sel = null; c.previewRes = null; updateCard(c); return; }
       if (act === "submit") { await submitCard(c); return; }
+      if (act === "push-card") { await pushCardToErp(c); return; }
 
       if (act === "apply-newgroup") {
         const card = document.querySelector(`.card[data-i="${i}"]`);
