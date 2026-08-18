@@ -8,9 +8,6 @@
 const $ = s => document.querySelector(s);
 const MASK = '••••••••';
 
-const PROVIDER_LABELS = { none: 'None (fuzzy only)', anthropic: 'Anthropic', gemini: 'Google Gemini', openai: 'OpenAI', ollama: 'Ollama (local)', grok: 'Grok (xAI)', groq: 'Groq' };
-const PROVIDER_MODEL_HINT = { none: '', anthropic: 'claude-haiku-4-5-20251001', gemini: 'gemini-2.0-flash', openai: 'gpt-4o-mini', ollama: 'llama3.1', grok: 'grok-4', groq: 'llama-3.3-70b-versatile' };
-
 async function api(path, opts = {}) {
   const r = await fetch(path, {
     ...opts,
@@ -58,23 +55,11 @@ function render(settings) {
     </div>
 
     <div class="card">
-      <h2>LLM provider</h2>
-      <p class="hint">The key is stored on this server only, never in config.json, never in git, never sent back to a browser once saved.</p>
+      <h2>LLM Settings</h2>
+      <p class="hint">Model: Krutrim Spectre v2 via Bharat Router</p>
       <div class="row">
         <div class="field">
-          <label for="provider">Provider</label>
-          <select id="provider">
-            ${Object.entries(PROVIDER_LABELS).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
-          </select>
-        </div>
-        <div class="field">
-          <label for="model">Model</label>
-          <input id="model" placeholder="sensible default per provider">
-        </div>
-      </div>
-      <div class="row">
-        <div class="field">
-          <label for="apiKey">API key</label>
+          <label for="apiKey">Bharat Router API key</label>
           <input id="apiKey" type="password" placeholder="${keySet ? MASK : 'paste the key here'}" autocomplete="off">
         </div>
       </div>
@@ -90,6 +75,7 @@ function render(settings) {
       <div class="toggle"><input id="erpEnabled" type="checkbox"><label for="erpEnabled" style="margin:0">Enabled</label></div>
       <div class="toggle"><input id="erpDryRun" type="checkbox"><label for="erpDryRun" style="margin:0">Dry-run (no real writes)</label></div>
       <div class="toggle"><input id="erpAutoPush" type="checkbox"><label for="erpAutoPush" style="margin:0">Auto Push immediately upon creation</label></div>
+      <div class="toggle"><input id="erpPopulateSpecs" type="checkbox"><label for="erpPopulateSpecs" style="margin:0">Populate Specifications from ERP</label></div>
       <div class="row">
         <div class="field">
           <label for="erpUrl">Base URL</label>
@@ -105,6 +91,20 @@ function render(settings) {
           <label for="erpPassword">ERP Password</label>
           <input id="erpPassword" type="password" placeholder="${settings['erp.password'] ? MASK : 'leave blank if none'}" autocomplete="off">
         </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="erpApiKey">ERP API Key (Token auth)</label>
+          <input id="erpApiKey" placeholder="${settings['erp.api_key'] ? MASK : 'leave blank if none'}" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="erpApiSecret">ERP API Secret (Token auth)</label>
+          <input id="erpApiSecret" type="password" placeholder="${settings['erp.api_secret'] ? MASK : 'leave blank if none'}" autocomplete="off">
+        </div>
+      </div>
+      <div class="btnrow" style="margin-top: 10px;">
+        <button class="ghost" id="syncBtn" type="button">Sync Now</button>
+        <span class="testresult" id="syncResult"></span>
       </div>
     </div>
 
@@ -142,34 +142,41 @@ function render(settings) {
     </div>
   `;
 
-  $('#matchMode').value = settings['match.mode'];
+  $('#matchMode').value = settings['match.mode'] || 'llm';
   $('#threshold').value = settings['match.threshold'];
-  $('#provider').value = settings['llm.provider'];
-  $('#model').value = settings['llm.model'] || '';
   $('#erpEnabled').checked = !!settings['erp.enabled'];
   $('#erpDryRun').checked = !!settings['erp.dry_run'];
   $('#erpAutoPush').checked = !!settings['erp.auto_push'];
+  $('#erpPopulateSpecs').checked = !!settings['erp.populate_specs'];
   $('#erpUrl').value = settings['erp.base_url'] || '';
   $('#erpUsername').value = settings['erp.username'] || '';
   $('#syncTimes').value = settings['sync.times'] || '09:00,17:00';
   $('#ocrProvider').value = settings['ocr.provider'] || 'api';
   $('#ocrUrl').value = settings['ocr.api_url'] || 'http://ocr-service:8757/ocr';
 
-  $('#provider').addEventListener('change', () => {
-    if (!$('#model').value) $('#model').placeholder = PROVIDER_MODEL_HINT[$('#provider').value] || '';
-  });
-
   $('#testBtn').addEventListener('click', async () => {
     const out = $('#testResult');
     out.className = 'testresult';
     out.textContent = 'testing…';
-    const body = { 'llm.provider': $('#provider').value, 'llm.model': $('#model').value };
+    const body = {};
     const typed = $('#apiKey').value.trim();
     if (typed) body['llm.api_key'] = typed;
     const d = await api('/api/v1/settings/test-llm', { method: 'POST', body: JSON.stringify(body) });
     if (!d.ok) { out.className = 'testresult bad'; out.textContent = (d.error && d.error.message) || 'request failed'; return; }
     if (d.success) { out.className = 'testresult ok'; out.textContent = 'key works'; }
     else { out.className = 'testresult bad'; out.textContent = d.detail || 'failed'; }
+  });
+
+  $('#syncBtn').addEventListener('click', async () => {
+    const out = $('#syncResult');
+    out.className = 'testresult';
+    out.textContent = 'syncing...';
+    $('#syncBtn').disabled = true;
+    const d = await api('/api/v1/erp/sync', { method: 'POST', body: JSON.stringify({ direction: 'both' }) });
+    $('#syncBtn').disabled = false;
+    if (!d.ok) { out.className = 'testresult bad'; out.textContent = (d.error && d.error.message) || 'sync failed'; return; }
+    out.className = 'testresult ok';
+    out.textContent = `sync complete`;
   });
 
   $('#saveBtn').addEventListener('click', async () => {
@@ -179,21 +186,28 @@ function render(settings) {
     const body = {
       'match.mode': $('#matchMode').value,
       'match.threshold': Number($('#threshold').value),
-      'llm.provider': $('#provider').value,
-      'llm.model': $('#model').value,
       'erp.enabled': $('#erpEnabled').checked,
       'erp.dry_run': $('#erpDryRun').checked,
       'erp.auto_push': $('#erpAutoPush').checked,
+      'erp.populate_specs': $('#erpPopulateSpecs').checked,
       'erp.base_url': $('#erpUrl').value,
       'erp.username': $('#erpUsername').value.trim(),
       'sync.times': $('#syncTimes').value,
       'ocr.provider': $('#ocrProvider').value,
       'ocr.api_url': $('#ocrUrl').value.trim(),
     };
-    const typedKey = $('#apiKey').value; // '' means "leave unchanged" unless explicitly cleared below
+    const typedKey = $('#apiKey').value; 
     if (typedKey.trim()) body['llm.api_key'] = typedKey.trim();
+    
     const typedPwd = $('#erpPassword').value;
     if (typedPwd.trim()) body['erp.password'] = typedPwd.trim();
+    
+    const typedErpKey = $('#erpApiKey').value;
+    if (typedErpKey.trim()) body['erp.api_key'] = typedErpKey.trim();
+    
+    const typedErpSec = $('#erpApiSecret').value;
+    if (typedErpSec.trim()) body['erp.api_secret'] = typedErpSec.trim();
+
     const d = await api('/api/v1/settings', { method: 'POST', body: JSON.stringify(body) });
     btn.disabled = false;
     if (!d.ok) {
@@ -205,6 +219,8 @@ function render(settings) {
     $('#saveMsg').textContent = 'saved';
     $('#apiKey').value = '';
     $('#erpPassword').value = '';
+    $('#erpApiKey').value = '';
+    $('#erpApiSecret').value = '';
     render(d.settings);
   });
 }

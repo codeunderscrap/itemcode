@@ -150,11 +150,17 @@ def v1_item_push(req):
 
 # ================================================================== task 4
 def v1_sync_run(req):
-    """On-demand sync from the UI. Body: {"direction": "pull"|"push"}."""
+    """On-demand sync from the UI. Body: {"direction": "pull"|"push"|"both"}."""
     A.require_session(req)
     direction = (req.body or {}).get("direction", "pull")
-    if direction not in ("pull", "push"):
-        raise ApiError("VALIDATION", "direction must be 'pull' or 'push'")
+    if direction not in ("pull", "push", "both"):
+        raise ApiError("VALIDATION", "direction must be 'pull', 'push', or 'both'")
+    
+    if direction == "both":
+        row1 = S.sync(ctx.con, direction="pull")
+        row2 = S.sync(ctx.con, direction="push")
+        return ok({"sync": [row1, row2]})
+        
     row = S.sync(ctx.con, direction=direction)
     return ok({"sync": row})
 

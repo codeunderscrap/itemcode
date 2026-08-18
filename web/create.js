@@ -731,10 +731,36 @@
         } catch (e) { /* non-fatal — the item is already issued either way */ }
       }
     } catch (err) {
-      toast(err.message || "could not submit", "err");
+      if (err.code === "CONFLICT" && err.detail && err.detail.existing_item) {
+        showConflictModal(c, err.detail);
+      } else {
+        toast(err.message || "could not submit", "err");
+      }
     }
     c.submitting = false;
     updateCard(c);
+  }
+
+  function showConflictModal(c, detail) {
+    const ex = detail.existing_item;
+    modal(`
+      <h2 style="margin-top:0; color:var(--warn)">Code Collision</h2>
+      <p style="margin-bottom:15px;">The code <code>${esc(detail.code)}</code> has already been issued to another item.</p>
+      
+      <div style="background:var(--panel2); padding:12px; border-radius:6px; margin-bottom:15px; border:1px solid var(--line);">
+        <div style="font-size:11px; color:var(--tx3); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Existing Item</div>
+        <div style="font-weight:600; margin-bottom:4px;">${esc(ex.name)}</div>
+        ${ex.description && ex.description !== ex.name ? `<div style="color:var(--tx2); font-size:13px;">${esc(ex.description)}</div>` : ""}
+      </div>
+      
+      <p style="margin-bottom:20px; color:var(--tx2); font-size:13px;">
+        To proceed with this line, you must either edit your specifications to differentiate it, or use the "already exists" action to accept the existing code.
+      </p>
+      
+      <div class="btnrow" style="display:flex; justify-content:flex-end; gap:8px;">
+        <button class="ghost" onclick="closeModal()">Close & Edit</button>
+      </div>
+    `);
   }
 
   // ──────────────────────────────────────────────────────── delegation

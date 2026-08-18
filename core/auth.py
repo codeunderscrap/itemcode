@@ -319,56 +319,11 @@ def test_llm_key(provider, api_key, model):
         return False, "no API key set"
 
     try:
-        if provider == "anthropic":
+        if provider == "bharatrouter":
             req = urllib.request.Request(
-                "https://api.anthropic.com/v1/messages",
+                "https://api.bharatrouter.com/v1/chat/completions",
                 data=json.dumps({
-                    "model": model or "claude-haiku-4-5-20251001",
-                    "max_tokens": 1,
-                    "messages": [{"role": "user", "content": "hi"}],
-                }).encode(),
-                headers={"x-api-key": api_key, "anthropic-version": "2023-06-01",
-                         "content-type": "application/json"},
-                method="POST")
-        elif provider == "openai":
-            req = urllib.request.Request(
-                "https://api.openai.com/v1/chat/completions",
-                data=json.dumps({
-                    "model": model or "gpt-4o-mini",
-                    "max_tokens": 1,
-                    "messages": [{"role": "user", "content": "hi"}],
-                }).encode(),
-                headers={"Authorization": f"Bearer {api_key}", "content-type": "application/json"},
-                method="POST")
-        elif provider == "gemini":
-            url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
-                   f"{model or 'gemini-2.0-flash'}:generateContent?key={api_key}")
-            req = urllib.request.Request(
-                url,
-                data=json.dumps({"contents": [{"parts": [{"text": "hi"}]}]}).encode(),
-                headers={"content-type": "application/json"},
-                method="POST")
-        elif provider == "ollama":
-            req = urllib.request.Request(
-                "http://localhost:11434/api/generate",
-                data=json.dumps({"model": model or "llama3.1", "prompt": "hi", "stream": False}).encode(),
-                headers={"content-type": "application/json"},
-                method="POST")
-        elif provider == "grok":
-            req = urllib.request.Request(
-                "https://api.x.ai/v1/chat/completions",
-                data=json.dumps({
-                    "model": model or "grok-4",
-                    "max_tokens": 1,
-                    "messages": [{"role": "user", "content": "hi"}],
-                }).encode(),
-                headers={"Authorization": f"Bearer {api_key}", "content-type": "application/json"},
-                method="POST")
-        elif provider == "groq":
-            req = urllib.request.Request(
-                "https://api.groq.com/openai/v1/chat/completions",
-                data=json.dumps({
-                    "model": model or "llama-3.3-70b-versatile",
+                    "model": model or "krutrim/Krutrim-spectre-v2",
                     "max_tokens": 1,
                     "messages": [{"role": "user", "content": "hi"}],
                 }).encode(),

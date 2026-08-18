@@ -244,37 +244,25 @@ def from_text(text):
         return []
         
     items = []
-    blocks = re.split(r'\n\s*\n', text.strip())
-    
-    for block in blocks:
-        raw_lines = block.splitlines()
-        current_item_lines = []
-        has_financial = False
-        
-        def _flush():
-            if current_item_lines:
-                p = parse_line(" | ".join(current_item_lines))
-                if p:
-                    items.append(p)
-            current_item_lines.clear()
+    for ln in text.split('\n'):
+        ln = ln.strip()
+        if ln.endswith(';'):
+            ln = ln[:-1].strip()
+        if not ln:
+            continue
             
-        for ln in raw_lines:
-            ln = ln.strip()
-            if not ln:
-                continue
-                
-            line_has_financial = bool(QTY_RE.search(ln) or RATE_RE.search(ln) or HSN_RE.search(ln))
+        p = parse_line(ln)
+        if p:
+            desc = p.get("description", "")
+            if ',' in desc:
+                parts = [x.strip() for x in desc.split(',') if x.strip()]
+                if parts:
+                    p["description"] = parts[0]
+                    p["spec_hints"] = parts[1:]
+            else:
+                p["spec_hints"] = []
+            items.append(p)
             
-            if has_financial:
-                _flush()
-                has_financial = False
-                
-            current_item_lines.append(ln)
-            if line_has_financial:
-                has_financial = True
-                
-        _flush()
-        
     return items
 
 

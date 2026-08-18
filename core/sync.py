@@ -123,6 +123,14 @@ def sync(con, direction="pull", erp=None):
 
     pushed = []
     if direction == "push":
+        # Push hierarchy first
+        all_grps = D.rows(con, "SELECT name FROM grp")
+        for g in all_grps:
+            try:
+                erp._ensure_item_group(g["name"], con)
+            except Exception as e:                                            # noqa: BLE001
+                conflicts.append({"type": "hierarchy_push_error", "group": g["name"], "error": str(e)})
+
         candidates = D.rows(con, "SELECT * FROM item WHERE status='confirmed' "
                                   "AND COALESCE(provisional,0)=0 AND erp_synced_at IS NULL")
         for it in candidates:

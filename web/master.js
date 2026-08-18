@@ -124,9 +124,9 @@ async function openItemModal(code) {
 
 function renderItemModal(it, tab) {
   const frozen = it.frozen_effective;
-  const classCascade = `${esc(it.hname || '–')} → ${esc(it.sname || '–')} → ${esc(it.gname || '–')}`;
+  const classCascade = `${esc(it.hname || '–')} (<code>${esc(it.hcode || '--')}</code>) → ${esc(it.sname || '–')} (<code>${esc(it.scode || '--')}</code>) → ${esc(it.gname || '–')} (<code>${esc(it.gcode || '---')}</code>)`;
   const specLine = (it.specs || []).filter(s => s.label)
-    .map(s => `${esc(s.label)} <b>${esc(s.value || '—')}</b>`).join(' · ') || 'no specifications on this group';
+    .map(s => `${esc(s.label)} <b>${esc(s.value || '—')}</b> (<code>${esc(s.code2 || '--')}</code>)`).join(' · ') || 'no specifications on this group';
 
   modal(`
     <h3><code style="font-size:15px">${esc(it.code)}</code></h3>

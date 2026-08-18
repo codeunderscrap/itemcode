@@ -186,7 +186,7 @@ def _groups_with_hsn(con, hsn):
     return {r["grp_id"]: r["c"] for r in rows}
 
 
-def _candidate_groups(con, matcher, text, hints, limit=5, hsn=None):
+def _candidate_groups(con, matcher, text, hints, limit=7, hsn=None):
     """The group shortlist, rules-only. `hints.group_id` is the operator
     overriding the machine outright - it collapses the shortlist to that one
     choice and nothing else is asked about it."""
@@ -376,7 +376,8 @@ def _format_candidates(candidates):
     lines = []
     for gi, c in enumerate(candidates):
         g = c["group"]
-        lines.append(f'    group[{gi}] "{g["name"]}" (rule score {c["score"]})')
+        hn, sn = g.get("head_name", ""), g.get("sub_name", "")
+        lines.append(f'    group[{gi}] "{g["name"]}" under "{hn} > {sn}" (rule score {c["score"]})')
         for so in c["slots"]:
             if so.get("forced_idx") is not None:
                 continue                                # operator already fixed this one
@@ -392,20 +393,20 @@ def _format_candidates(candidates):
 def _build_batch_prompt(items):
     """items: [(line_index, line_context), ...] - everything needing a
     decision, from one invoice, in one prompt. This is the "20 lines, one
-    call" requirement: however many lines and candidates there are, this
-    produces exactly one request."""
+    call" requirement."""
     head = (
-        "You are matching purchase-invoice lines to an existing item dictionary "
-        "for a mining / battery-recycling company. For EACH line decide which "
-        "existing item GROUP it belongs to (or none), then - only for the group "
-        "you chose - decide the value of each listed specification slot and, if "
-        "one is listed, the vendor.\n\n"
-        "Rules: choose ONLY from the numbered options given for that line - "
-        "never invent a group, a value, or a code, and never answer with a "
-        "number that was not offered for that line. A different size, grade, "
-        "chemistry or brand is NOT the same item - do not force a match just "
-        "because the words are similar. Use null wherever nothing on the list "
-        "is right.\n\n"
+        "DOMAIN: Mining operations, battery recycling, construction, civil works (India).\n"
+        "HIERARCHY: Items -> Head (broad category) -> Subhead (sub-category) -> Group (item type).\n"
+        "You are matching purchase-invoice lines to an existing item dictionary. "
+        "For EACH line decide which existing item GROUP it belongs to (or none), then - only for the group "
+        "you chose - decide the value of each listed specification slot and, if one is listed, the vendor.\n\n"
+        "RULES:\n"
+        "- choose ONLY from the numbered options given for that line - never invent a group, a value, or a code, and never answer with a number that was not offered for that line.\n"
+        "- A different size, grade, chemistry or brand means a DIFFERENT item — never force a match just because the words are similar.\n"
+        "- HSN codes are authoritative for category placement — an 8-digit HSN code locks the head.\n"
+        "- Indian standards (IS XXXX) are part of the item identity, not specifications to ignore.\n"
+        "- Vendor/brand names appearing after 'make:', 'by:', 'brand:' are vendor hints, not specs.\n"
+        "- When in doubt, return null — a missed match is safer than a wrong match.\n\n"
         "Reply with STRICT JSON only - no prose, no markdown fences - in exactly "
         'this shape: {"lines": [{"line": <n>, "group": <index or null>, '
         '"slots": {"<slot number>": <index or null>, ...}, '
@@ -413,7 +414,9 @@ def _build_batch_prompt(items):
     )
     body = []
     for idx, lc in items:
-        body.append(f'Line {idx}: "{lc["probe"]}"')
+        spec_hints = lc.get("hints", {}).get("slot_text_hints", [])
+        hint_str = f" [User Specs: {', '.join(spec_hints)}]" if spec_hints else ""
+        body.append(f'Line {idx}: "{lc["probe"]}"{hint_str}')
         if lc["candidates"]:
             body.append(_format_candidates(lc["candidates"]))
         else:

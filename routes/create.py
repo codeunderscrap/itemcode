@@ -21,79 +21,7 @@ from core import ingest as ING
 from core.api import ok, ApiError
 from core.context import ctx
 
-try:
-    from core.auth import require_session          # Agent B
-except ImportError:                                  # not landed yet
-    def require_session(req):
-        """Stand-in until core/auth.py exists (agents/CONTRACTS.md §6).
-
-        Falls back to the forgeable X-User header dispatch.py already
-        parses, so the screen is usable today. This is not a security
-        boundary - it exists only so the create screen has *something*
-        gating it before Agent B's real session cookie/token lands. The
-        `except ImportError` above means the swap to the real thing is
-        automatic: once core/auth.py exists this branch simply stops
-        executing, no edit needed here.
-        """
-        u = getattr(req, "user", None)
-        if not u or u == "unknown":
-            raise ApiError("AUTH_REQUIRED", "sign in to create codes")
-        return u
-
-
-# ============================================================= pre-existing
-# Relocated verbatim by Agent 0. Old, un-versioned paths, unwrapped JSON -
-# web/app.js still calls these directly. Do not change their shape.
-
-def resolve_one(req):
-    require_session(req)
-    return R.resolve(ctx.con, ctx.matcher, req.body)
-
-
-def resolve_batch(req):
-    require_session(req)
-    out = []
-    for line in req.body.get("lines", []):
-        out.append(R.resolve(ctx.con, ctx.matcher, {
-            "text": line.get("description") or line.get("raw"),
-            "name": line.get("name"), "hsn": line.get("hsn"),
-            "uom": line.get("uom"), "vendor": line.get("vendor"),
-            "hints": line.get("hints") or {}}))
-    return {"results": out}
-
-
-def commit(req):
-    require_session(req)
-    try:
-        res = R.commit(ctx.con, ctx.matcher, req.body.get("proposal") or {}, req.user,
-                       push_erp=bool(req.body.get("push_erp")), erp=ctx.erp)
-        return {"ok": True, **res}
-    except ValueError as e:
-        return 409, {"ok": False, "error": str(e)}
-
-
-def ingest(req):
-    require_session(req)
-    if req.files:
-        fn, data = next(iter(req.files.values()))
-        lines, note = ING.ingest(data, fn)
-        return {"lines": lines, "note": note, "source": fn}
-    text = req.fields.get("text") or (req.body or {}).get("text") or ""
-    return {"lines": ING.from_text(text), "note": "", "source": "pasted text"}
-
-
-def alias_add(req):
-    require_session(req)
-    from core.matcher import normalize
-    p = req.body
-    con = ctx.con
-    con.execute("""INSERT OR IGNORE INTO alias(scope,ref_id,term,term_norm,user,ts)
-                   VALUES(?,?,?,?,?,?)""",
-                (p["scope"], int(p["ref_id"]), p["term"], normalize(p["term"]),
-                 req.user, D.now()))
-    D.log(con, req.user, "learn-alias", p["term"], {"scope": p["scope"], "ref": p["ref_id"]})
-    con.commit()
-    return {"ok": True}
+from core.auth import require_session
 
 
 # ==================================================================== /api/v1
@@ -172,11 +100,16 @@ def resolve_batch_v1(req):
     out = []
     for line in (req.body or {}).get("lines", []):
         try:
+            hints = line.get("hints") or {}
+            spec_hints = line.get("spec_hints")
+            if spec_hints:
+                hints["slot_text_hints"] = spec_hints
+                
             payload = {
                 "text": line.get("description") or line.get("raw") or line.get("text"),
                 "name": line.get("name"), "hsn": line.get("hsn"),
                 "uom": line.get("uom"), "vendor": line.get("vendor"),
-                "hints": line.get("hints") or {},
+                "hints": hints,
             }
             out.append(_augment(R.resolve(ctx.con, ctx.matcher, payload)))
         except Exception as e:                                # noqa: BLE001
@@ -329,7 +262,15 @@ def commit_v1(req):
         res = R.commit(ctx.con, ctx.matcher, proposal, user,
                        push_erp=bool(body.get("push_erp")), erp=ctx.erp)
     except ValueError as e:
-        raise ApiError("CONFLICT", str(e))
+        msg = str(e)
+        code = msg.split()[0] if "already exists" in msg else None
+        detail = {"error": msg}
+        if code:
+            existing = D.one(ctx.con, "SELECT id, name, description, status FROM item WHERE code=?", (code,))
+            if existing:
+                detail["code"] = code
+                detail["existing_item"] = dict(existing)
+        raise ApiError("CONFLICT", msg, detail=detail)
 
     D.log(ctx.con, user, "commit-idem", idem_key, res)
     ctx.con.commit()
@@ -424,13 +365,6 @@ def cascade_slots(req):
 
 
 ROUTES = [
-    # pre-existing, unversioned - do not change shape, web/app.js depends on it
-    ("POST", "/api/resolve", resolve_one),
-    ("POST", "/api/resolve_batch", resolve_batch),
-    ("POST", "/api/commit", commit),
-    ("POST", "/api/ingest", ingest),
-    ("POST", "/api/alias/add", alias_add),
-
     # /api/v1 - the real create-screen API (web/create.js)
     ("POST", "/api/v1/resolve", resolve_v1),
     ("POST", "/api/v1/resolve_batch", resolve_batch_v1),

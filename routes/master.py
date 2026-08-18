@@ -355,9 +355,9 @@ def item_detail_v1(req):
     raw specval id, and can render the read-only classification cascade."""
     require_session(req)
     code = (req.params.get("code") or "").upper()
-    it = _one("""SELECT i.*, g.name AS gname, g.id AS group_id, g.labels AS glabels,
-                        s.id AS subhead_id, s.name AS sname,
-                        h.id AS head_id, h.name AS hname
+    it = _one("""SELECT i.*, g.name AS gname, g.id AS group_id, g.labels AS glabels, g.code3 AS gcode,
+                        s.id AS subhead_id, s.name AS sname, s.code2 AS scode,
+                        h.id AS head_id, h.name AS hname, h.code2 AS hcode
                  FROM item i LEFT JOIN grp g ON g.id=i.grp_id
                  LEFT JOIN subhead s ON s.id=g.subhead_id
                  LEFT JOIN head h ON h.id=s.head_id

@@ -118,22 +118,9 @@ def change_password(req):
 # directly if ERPNext ever needs its own credential, since they are not in
 # that table.
 
-PROVIDER_MODELS = {
-    "none": "",
-    "anthropic": "claude-haiku-4-5-20251001",
-    "gemini": "gemini-2.0-flash",
-    "openai": "gpt-4o-mini",
-    "ollama": "llama3.1",
-    "grok": "grok-4",
-    "groq": "llama-3.3-70b-versatile",
-}
-PROVIDERS = set(PROVIDER_MODELS)
-
 DEFAULTS = {
-    "match.mode": "fuzzy",
-    "llm.provider": "none",
+    "match.mode": "llm",
     "llm.api_key": "",
-    "llm.model": "",
     "match.threshold": 60,
     "erp.enabled": False,
     "erp.dry_run": True,
@@ -141,11 +128,14 @@ DEFAULTS = {
     "erp.base_url": "",
     "erp.username": "",
     "erp.password": "",
+    "erp.api_key": "",
+    "erp.api_secret": "",
+    "erp.populate_specs": True,
     "sync.times": "09:00,17:00",
     "ocr.provider": "api",
     "ocr.api_url": "http://ocr-service:8757/ocr",
 }
-SECRET_KEYS = {"llm.api_key", "erp.password"}
+SECRET_KEYS = {"llm.api_key", "erp.password", "erp.api_secret"}
 MASK = "••••••••"
 
 
@@ -158,9 +148,8 @@ def _read_settings(con):
         else:
             out[key] = val
     key_present = bool(D.get_setting(con, "llm.api_key", ""))
-    provider_set = D.get_setting(con, "llm.provider", "none") not in (None, "", "none")
     out["llm_key_set"] = key_present
-    out["llm_ready"] = key_present and provider_set
+    out["llm_ready"] = key_present
     return out
 
 
@@ -175,25 +164,12 @@ def post_settings(req):
     p = req.body or {}
     updates = {}
 
-    if "llm.provider" in p:
-        prov = p["llm.provider"]
-        if prov not in PROVIDERS:
-            raise ApiError("VALIDATION", "unknown provider")
-        updates["llm.provider"] = prov
-
     if "llm.api_key" in p:
         key = (p["llm.api_key"] or "").strip()
         if key and key != MASK:
             updates["llm.api_key"] = key
         elif key == "":
             updates["llm.api_key"] = ""    # explicit clear
-
-    if "llm.model" in p:
-        model = (p["llm.model"] or "").strip()
-        if not model:
-            provider = updates.get("llm.provider", D.get_setting(con, "llm.provider", "none"))
-            model = PROVIDER_MODELS.get(provider, "")
-        updates["llm.model"] = model
 
     if "match.threshold" in p:
         try:
@@ -204,7 +180,7 @@ def post_settings(req):
             raise ApiError("VALIDATION", "match.threshold must be between 0 and 100")
         updates["match.threshold"] = t
 
-    for key in ("erp.enabled", "erp.dry_run", "erp.auto_push"):
+    for key in ("erp.enabled", "erp.dry_run", "erp.auto_push", "erp.populate_specs"):
         if key in p:
             updates[key] = bool(p[key])
 
@@ -221,6 +197,16 @@ def post_settings(req):
         elif pwd == "":
             updates["erp.password"] = ""
 
+    if "erp.api_key" in p:
+        updates["erp.api_key"] = (p["erp.api_key"] or "").strip()
+        
+    if "erp.api_secret" in p:
+        sec = (p["erp.api_secret"] or "").strip()
+        if sec and sec != MASK:
+            updates["erp.api_secret"] = sec
+        elif sec == "":
+            updates["erp.api_secret"] = ""
+
     if "sync.times" in p:
         updates["sync.times"] = (p["sync.times"] or "").strip() or DEFAULTS["sync.times"]
 
@@ -233,23 +219,18 @@ def post_settings(req):
     if "ocr.api_url" in p:
         updates["ocr.api_url"] = (p["ocr.api_url"] or "").strip()
 
-    # figure out where the key/provider land AFTER this update, before
-    # deciding match.mode - this is what "until a key is present, match.mode
-    # must be fuzzy" (agents/CONTRACTS.md decision 11) actually means
+    # figure out where the key lands AFTER this update
     new_key = updates.get("llm.api_key", D.get_setting(con, "llm.api_key", ""))
-    new_provider = updates.get("llm.provider", D.get_setting(con, "llm.provider", "none"))
-    key_ready = bool(new_key) and new_provider not in (None, "", "none")
+    key_ready = bool(new_key)
 
     if "match.mode" in p:
         mode = p["match.mode"]
         if mode not in ("fuzzy", "llm"):
             raise ApiError("VALIDATION", "match.mode must be 'fuzzy' or 'llm'")
         if mode == "llm" and not key_ready:
-            raise ApiError("VALIDATION", "set a provider and an API key before switching to LLM matching")
+            raise ApiError("VALIDATION", "set an API key before switching to LLM matching")
         updates["match.mode"] = mode
     elif not key_ready:
-        # the key/provider just got cleared (or never existed) - force fuzzy
-        # so the app "runs fuzzy-only" rather than silently failing every call
         if D.get_setting(con, "match.mode", "fuzzy") != "fuzzy":
             updates["match.mode"] = "fuzzy"
 
@@ -267,12 +248,10 @@ def test_llm(req):
     A.require_admin(req)
     con = ctx.con
     p = req.body or {}
-    provider = p.get("llm.provider") or D.get_setting(con, "llm.provider", "none")
     key = (p.get("llm.api_key") or "").strip()
     if not key or key == MASK:
         key = D.get_setting(con, "llm.api_key", "")
-    model = (p.get("llm.model") or "").strip() or D.get_setting(con, "llm.model", "")
-    success, detail = A.test_llm_key(provider, key, model)
+    success, detail = A.test_llm_key("bharatrouter", key, "krutrim/Krutrim-spectre-v2")
     return ok({"success": success, "detail": detail})
 
 
