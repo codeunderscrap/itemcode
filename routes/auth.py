@@ -143,7 +143,7 @@ DEFAULTS = {
     "erp.password": "",
     "sync.times": "09:00,17:00",
     "ocr.provider": "api",
-    "ocr.api_url": "http://localhost:8757/ocr",
+    "ocr.api_url": "http://ocr-service:8757/ocr",
 }
 SECRET_KEYS = {"llm.api_key", "erp.password"}
 MASK = "••••••••"

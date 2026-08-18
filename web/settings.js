@@ -131,7 +131,7 @@ function render(settings) {
         </div>
         <div class="field">
           <label for="ocrUrl">OCR API Endpoint</label>
-          <input id="ocrUrl" placeholder="http://localhost:8757/ocr">
+          <input id="ocrUrl" placeholder="http://ocr-service:8757/ocr">
         </div>
       </div>
     </div>
@@ -153,7 +153,7 @@ function render(settings) {
   $('#erpUsername').value = settings['erp.username'] || '';
   $('#syncTimes').value = settings['sync.times'] || '09:00,17:00';
   $('#ocrProvider').value = settings['ocr.provider'] || 'api';
-  $('#ocrUrl').value = settings['ocr.api_url'] || 'http://localhost:8757/ocr';
+  $('#ocrUrl').value = settings['ocr.api_url'] || 'http://ocr-service:8757/ocr';
 
   $('#provider').addEventListener('change', () => {
     if (!$('#model').value) $('#model').placeholder = PROVIDER_MODEL_HINT[$('#provider').value] || '';
