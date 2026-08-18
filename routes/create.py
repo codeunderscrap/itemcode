@@ -32,8 +32,8 @@ def _llm_available():
     """True only when a provider is actually configured (CONTRACTS.md
     decision 11 - fuzzy-only until a key exists). Settings table wins over
     config.json since that is where the admin pastes the key at runtime."""
-    from core import llm as L
-    return L.available(ctx.con, ctx.cfg)
+    from core import llm
+    return llm.available(ctx.con, ctx.cfg)
 
 
 def _matched_by(res):
