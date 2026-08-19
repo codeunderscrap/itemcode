@@ -734,6 +734,53 @@ def map_erp_group(req):
     return ok({"id": grp["id"], "code3": grp["code3"]})
 
 
+def classify_erp_item(req):
+    """POST /api/v1/erp-items/<code>/classify — Assigns an ERP-only item to a local
+    group and sets its specifications in ERPNext, without renaming it."""
+    require_session(req)
+    con = ctx.con
+    import urllib.parse
+    code = urllib.parse.unquote(req.params.get("code") or "")
+    b = req.body or {}
+    group_id = b.get("group_id")
+    specs = b.get("specs") or []
+    
+    if not code or not group_id:
+        raise ApiError("VALIDATION", "Code and group_id are required")
+        
+    from core.db import _one
+    grp = _one(con, "SELECT name FROM grp WHERE id=?", (group_id,))
+    if not grp:
+        raise ApiError("NOT_FOUND", "Group not found")
+        
+    item_group = grp["name"]
+    
+    from core.erp import ERP
+    erp = ERP().refresh(con)
+    if not erp.enabled:
+        raise ApiError("FAILED", "ERP connection is disabled")
+        
+    erp.login()
+    
+    payload = {"item_group": item_group}
+    for i in range(1, 5):
+        val = specs[i-1] if i <= len(specs) else None
+        if val:
+            sv = _one(con, "SELECT code2 FROM specval WHERE grp_id=? AND slot=? AND value=?", (group_id, i, val))
+            code2 = sv["code2"] if sv else "00"
+            erp._ensure_item_specification(item_group, val, code2, i)
+            payload[f"item_specification_{i}"] = f"{item_group}-{val}-{code2}"
+        else:
+            payload[f"item_specification_{i}"] = ""
+            
+    try:
+        res = erp._resource("PUT", "Item", name=code, payload=payload)
+    except Exception as e:
+        raise ApiError("FAILED", f"Failed to update ERP item: {e}")
+        
+    return ok({"message": "ERP Item classified successfully"})
+
+
 ROUTES = [
     # ── legacy, unversioned, unchanged shape — web/app.js still calls these
     ("GET", "/api/master", master_list),
@@ -767,4 +814,5 @@ ROUTES = [
     ("GET", "/api/v1/download/<file>", download_v1),
     ("GET", "/api/v1/erp-items", erp_items_v1),
     ("POST", "/api/v1/erp-group/map", map_erp_group),
+    ("POST", "/api/v1/erp-items/<str>/classify", classify_erp_item),
 ]
