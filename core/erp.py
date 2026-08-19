@@ -246,6 +246,16 @@ class ERP:
             return {"ok": False, "error": f"{e.__class__.__name__}: {e}", "base": self.base}
 
     # ----------------------------------------------------------------- read
+    def pull_item_groups(self, con=None):
+        self.refresh(con)
+        self.login()
+        fields = urllib.parse.quote(json.dumps(["name", "parent_item_group"]))
+        try:
+            d = self._resource("GET", "Item Group", query=f"fields={fields}&limit_page_length=0")
+            return {g["name"]: g.get("parent_item_group") for g in (d.get("data") or [])}
+        except Exception:
+            return {}
+
     def pull_items(self, limit=20000, con=None):
         self.refresh(con)
         self.login()

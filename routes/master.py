@@ -650,21 +650,23 @@ def erp_items_v1(req):
         erp.login()
         items = erp.pull_items(limit=5000, con=ctx.con)
         
-        grp_map = {}
-        rows = ctx.con.execute("""
-            SELECT g.name as gname, s.name as sname, h.name as hname
-            FROM grp g
-            JOIN subhead s ON s.id=g.subhead_id
-            JOIN head h ON h.id=s.head_id
-        """).fetchall()
-        for r in rows:
-            grp_map[r["gname"]] = {"head": r["hname"], "subhead": r["sname"]}
+        erp_groups = erp.pull_item_groups(con=ctx.con)
             
         for item in items:
-            m = grp_map.get(item.get("item_group"))
-            if m:
-                item["head_name"] = m["head"]
-                item["subhead_name"] = m["subhead"]
+            grp = item.get("item_group")
+            if grp:
+                parent = erp_groups.get(grp)
+                if parent and parent != "All Item Groups":
+                    grandparent = erp_groups.get(parent)
+                    if grandparent and grandparent != "All Item Groups":
+                        item["subhead_name"] = parent
+                        item["head_name"] = grandparent
+                    else:
+                        item["subhead_name"] = "—"
+                        item["head_name"] = parent
+                else:
+                    item["subhead_name"] = "—"
+                    item["head_name"] = "—"
                 
         return ok({"items": items, "count": len(items)})
     except Exception as e:  # noqa: BLE001
