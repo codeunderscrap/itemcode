@@ -690,6 +690,50 @@ def download_v1(req):
     return download(req)
 
 
+def map_erp_group(req):
+    """POST /api/v1/erp-group/map — Maps an ERP-only item group to a local
+    subhead. Creates the local group and updates the parent in ERPNext."""
+    require_session(req)
+    con = ctx.con
+    b = req.body or {}
+    group_name = b.get("group_name")
+    subhead_id = b.get("subhead_id")
+    
+    if not group_name or not subhead_id:
+        raise ApiError("VALIDATION", "Group name and subhead are required")
+        
+    subhead_id = int(subhead_id)
+    
+    # Check if group already exists locally
+    from core.db import _one
+    existing = _one(con, "SELECT id, code3 FROM grp WHERE name=?", (group_name,))
+    if existing:
+        return ok({"message": "Group already exists locally", "id": existing["id"]})
+        
+    sub = _one(con, "SELECT s.name AS subhead_name, h.name AS head_name FROM subhead s JOIN head h ON h.id=s.head_id WHERE s.id=?", (subhead_id,))
+    if not sub:
+        raise ApiError("NOT_FOUND", "Sub-head not found")
+        
+    from core.codes import claim_group_code
+    try:
+        grp = claim_group_code(con, subhead_id, group_name, uom="Nos")
+    except Exception as e:
+        raise ApiError("CONFLICT", str(e))
+        
+    # Update ERPNext
+    from core.erp import ERP
+    erp = ERP().refresh(con)
+    if erp.enabled:
+        try:
+            erp.login()
+            erp._ensure_item_group(group_name, con)
+        except Exception as e:
+            # We created it locally, but ERP failed. Print a warning.
+            print(f"Warning: Failed to update ERPNext item group parent for {group_name}: {e}")
+            
+    return ok({"id": grp["id"], "code3": grp["code3"]})
+
+
 ROUTES = [
     # ── legacy, unversioned, unchanged shape — web/app.js still calls these
     ("GET", "/api/master", master_list),
@@ -722,4 +766,5 @@ ROUTES = [
     ("GET", "/api/v1/export", export_v1),
     ("GET", "/api/v1/download/<file>", download_v1),
     ("GET", "/api/v1/erp-items", erp_items_v1),
+    ("POST", "/api/v1/erp-group/map", map_erp_group),
 ]

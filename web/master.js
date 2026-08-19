@@ -69,7 +69,7 @@ async function fetchErpItems() {
 function renderErpOnlyRow(item) {
   const hs = (item.head_name && item.subhead_name) 
              ? `<div class="p"><b>${esc(item.head_name)}</b></div><div class="s">${esc(item.subhead_name)}</div>` 
-             : `<span class="muted">—</span>`;
+             : `<button class="ghost sm" style="font-size:11px; padding:3px 6px;" onclick="app.showMapErpGroupModal('${esc(item.item_group || '').replace(/'/g, "\\'")}')">+ Set Hierarchy</button>`;
   const specs = (item.specs_list && item.specs_list.length > 0)
              ? item.specs_list.map(esc).join('<br>')
              : `<span class="muted">—</span>`;
@@ -438,3 +438,70 @@ async function openPushReviewModal(code) {
     }
   };
 }
+
+app.showMapErpGroupModal = async function(groupName) {
+  modal(`
+    <h3 style="margin-top:0">Set Hierarchy for ERP Group</h3>
+    <p style="margin-bottom:15px; color:var(--tx2); font-size:13px;">
+      Map the ERP group <b>${esc(groupName)}</b> to a local Head and Sub-head. 
+      This will register the group locally and update its parent in ERPNext.
+    </p>
+    
+    <label style="display:block; margin-bottom:5px; font-weight:600; font-size:12px;">Head</label>
+    <select id="mapErpHead" style="width:100%; margin-bottom:15px;"></select>
+    
+    <label style="display:block; margin-bottom:5px; font-weight:600; font-size:12px;">Sub-head</label>
+    <select id="mapErpSub" style="width:100%; margin-bottom:20px;" disabled>
+      <option value="">Select a head first...</option>
+    </select>
+    
+    <div style="display:flex; justify-content:flex-end; gap:8px;">
+      <button class="ghost" onclick="closeModal()">Cancel</button>
+      <button class="primary" id="mapErpSubmit" disabled>Save Mapping</button>
+    </div>
+  `);
+  
+  const heads = await api('/api/v1/cascade/heads');
+  const headSel = document.getElementById('mapErpHead');
+  headSel.innerHTML = '<option value="">Select a head...</option>' + 
+    heads.heads.map(h => `<option value="${h.id}">${esc(h.name)}</option>`).join('');
+    
+  headSel.onchange = async () => {
+    const subSel = document.getElementById('mapErpSub');
+    subSel.innerHTML = '<option value="">Loading...</option>';
+    subSel.disabled = true;
+    document.getElementById('mapErpSubmit').disabled = true;
+    
+    if (!headSel.value) {
+      subSel.innerHTML = '<option value="">Select a head first...</option>';
+      return;
+    }
+    
+    const subs = await api('/api/v1/cascade/subheads?head=' + headSel.value);
+    subSel.innerHTML = '<option value="">Select a sub-head...</option>' + 
+      subs.subheads.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('');
+    subSel.disabled = false;
+  };
+  
+  document.getElementById('mapErpSub').onchange = () => {
+    document.getElementById('mapErpSubmit').disabled = !document.getElementById('mapErpSub').value;
+  };
+  
+  document.getElementById('mapErpSubmit').onclick = async () => {
+    const subId = document.getElementById('mapErpSub').value;
+    const btn = document.getElementById('mapErpSubmit');
+    btn.disabled = true;
+    btn.textContent = "Saving...";
+    try {
+      const res = await post('/api/v1/erp-group/map', { group_name: groupName, subhead_id: subId });
+      if (!res.ok) throw new Error(res.error || res.message || "Failed to map group");
+      toast("Group mapped successfully!", "ok");
+      closeModal();
+      loadMaster();
+    } catch(e) {
+      toast(e.message, "err");
+      btn.disabled = false;
+      btn.textContent = "Save Mapping";
+    }
+  };
+};
