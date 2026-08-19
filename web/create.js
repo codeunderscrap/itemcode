@@ -557,25 +557,6 @@
       </div>
       ${blockers.length ? `<div class="blockers">${blockers.map(esc).join("<br>")}</div>` : ""}
     </div>`;
-      const isPushPending = ERP_ENABLED && !c.pushedToErp;
-      return `<div class="card" data-i="${c.i}">
-        <div class="top"><div><div class="src">${esc(c.line.description)}</div>
-          <div class="sub">${tags}issued ${c.pushedToErp ? "· synced to ERP" : ""}</div></div>
-          <span class="badge b-done">${esc(c.submittedCode)}</span></div>
-        ${c.learnedAlias ? `<div class="ce-tag learn">learned — this wording now matches "${esc(c.learnedAlias)}" automatically next time</div>` : ""}
-        ${isPushPending
-          ? `<div class="codebar" style="margin-top:12px; border-top:1px solid var(--mm-b0,#262f3d); padding-top:12px;">
-              <span class="muted" style="font-size:13px; color:var(--tx3,#687986);">Not synced to ERPNext yet.</span>
-              <span class="grow"></span>
-              <button class="primary sm" data-act="push-card" data-i="${c.i}" ${c.pushing ? "disabled" : ""}>
-                ${c.pushing ? "Pushing..." : "Push to ERP"}
-              </button>
-             </div>`
-          : ""}
-      </div>`;
-    }
-
-    // Legacy phase functions removed since we always render dropdowns now.
   }
 
   // ─────────────────────────────────────────────────── cascade fetching
