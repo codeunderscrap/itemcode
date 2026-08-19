@@ -69,7 +69,7 @@ async function fetchErpItems() {
 function renderErpOnlyRow(item) {
   const hs = (item.head_name && item.subhead_name) 
              ? `<div class="p"><b>${esc(item.head_name)}</b></div><div class="s">${esc(item.subhead_name)}</div>` 
-             : `<button class="ghost sm" style="font-size:11px; padding:3px 6px;" onclick="showMapErpGroupModal('${esc(item.item_group || '').replace(/'/g, "\\'")}')">+ Set Hierarchy</button>`;
+             : `<span class="muted">—</span>`;
   const specs = (item.specs_list && item.specs_list.length > 0)
              ? item.specs_list.map(esc).join('<br>')
              : `<span class="muted">—</span>`;
@@ -82,7 +82,7 @@ function renderErpOnlyRow(item) {
     <td>—</td><td>${esc(item.stock_uom || '')}</td><td>—</td>
     <td><span class="pill erp">ERP only</span></td>
     <td class="num muted">—</td>
-    <td><span class="muted" style="font-size:11px">view in ERP</span></td>
+    <td><button class="ghost sm" onclick="showClassifyErpModal('${esc(item.name || '').replace(/'/g, "\\'")}')">edit</button></td>
   </tr>`;
 }
 
@@ -439,38 +439,49 @@ async function openPushReviewModal(code) {
   };
 }
 
-window.showMapErpGroupModal = async function(groupName) {
+window.showClassifyErpModal = async function(code) {
   modal(`
-    <h3 style="margin-top:0">Set Hierarchy for ERP Group</h3>
+    <h3 style="margin-top:0">Classify ERP Item</h3>
     <p style="margin-bottom:15px; color:var(--tx2); font-size:13px;">
-      Map the ERP group <b>${esc(groupName)}</b> to a local Head and Sub-head. 
-      This will register the group locally and update its parent in ERPNext.
+      Assign the ERP item <b>${esc(code)}</b> to a local hierarchy and define its specifications. 
+      This will update the item in ERPNext natively.
     </p>
     
-    <label style="display:block; margin-bottom:5px; font-weight:600; font-size:12px;">Head</label>
-    <select id="mapErpHead" style="width:100%; margin-bottom:15px;"></select>
+    <div style="display:flex; gap:10px; margin-bottom:15px;">
+      <div style="flex:1">
+        <label style="display:block; margin-bottom:5px; font-weight:600; font-size:12px;">Head</label>
+        <select id="cHead" style="width:100%;"></select>
+      </div>
+      <div style="flex:1">
+        <label style="display:block; margin-bottom:5px; font-weight:600; font-size:12px;">Sub-head</label>
+        <select id="cSub" style="width:100%;" disabled><option value="">Select a head first...</option></select>
+      </div>
+    </div>
     
-    <label style="display:block; margin-bottom:5px; font-weight:600; font-size:12px;">Sub-head</label>
-    <select id="mapErpSub" style="width:100%; margin-bottom:20px;" disabled>
-      <option value="">Select a head first...</option>
-    </select>
+    <label style="display:block; margin-bottom:5px; font-weight:600; font-size:12px;">Group</label>
+    <select id="cGrp" style="width:100%; margin-bottom:20px;" disabled><option value="">Select a sub-head first...</option></select>
+    
+    <div id="cSpecs" style="margin-bottom:20px;"></div>
     
     <div style="display:flex; justify-content:flex-end; gap:8px;">
       <button class="ghost" onclick="closeModal()">Cancel</button>
-      <button class="primary" id="mapErpSubmit" disabled>Save Mapping</button>
+      <button class="primary" id="cSubmit" disabled>Update ERP Item</button>
     </div>
   `);
   
   const heads = await api('/api/v1/cascade/heads');
-  const headSel = document.getElementById('mapErpHead');
+  const headSel = document.getElementById('cHead');
   headSel.innerHTML = '<option value="">Select a head...</option>' + 
     heads.heads.map(h => `<option value="${h.id}">${esc(h.name)}</option>`).join('');
     
   headSel.onchange = async () => {
-    const subSel = document.getElementById('mapErpSub');
+    const subSel = document.getElementById('cSub');
     subSel.innerHTML = '<option value="">Loading...</option>';
     subSel.disabled = true;
-    document.getElementById('mapErpSubmit').disabled = true;
+    document.getElementById('cGrp').disabled = true;
+    document.getElementById('cGrp').innerHTML = '<option value="">Select a sub-head first...</option>';
+    document.getElementById('cSpecs').innerHTML = '';
+    document.getElementById('cSubmit').disabled = true;
     
     if (!headSel.value) {
       subSel.innerHTML = '<option value="">Select a head first...</option>';
@@ -483,25 +494,72 @@ window.showMapErpGroupModal = async function(groupName) {
     subSel.disabled = false;
   };
   
-  document.getElementById('mapErpSub').onchange = () => {
-    document.getElementById('mapErpSubmit').disabled = !document.getElementById('mapErpSub').value;
+  document.getElementById('cSub').onchange = async () => {
+    const subSel = document.getElementById('cSub');
+    const grpSel = document.getElementById('cGrp');
+    grpSel.innerHTML = '<option value="">Loading...</option>';
+    grpSel.disabled = true;
+    document.getElementById('cSpecs').innerHTML = '';
+    document.getElementById('cSubmit').disabled = true;
+    
+    if (!subSel.value) {
+      grpSel.innerHTML = '<option value="">Select a sub-head first...</option>';
+      return;
+    }
+    
+    const grps = await api('/api/v1/cascade/groups?subhead=' + subSel.value);
+    grpSel.innerHTML = '<option value="">Select a group...</option>' + 
+      grps.groups.map(g => `<option value="${g.id}">${esc(g.name)}</option>`).join('');
+    grpSel.disabled = false;
   };
   
-  document.getElementById('mapErpSubmit').onclick = async () => {
-    const subId = document.getElementById('mapErpSub').value;
-    const btn = document.getElementById('mapErpSubmit');
+  let currentSlots = [];
+  
+  document.getElementById('cGrp').onchange = async () => {
+    const grpSel = document.getElementById('cGrp');
+    const specsDiv = document.getElementById('cSpecs');
+    specsDiv.innerHTML = '<i>Loading slots...</i>';
+    document.getElementById('cSubmit').disabled = true;
+    
+    if (!grpSel.value) {
+      specsDiv.innerHTML = '';
+      return;
+    }
+    
+    const d = await api('/api/v1/cascade/slots?group=' + grpSel.value);
+    currentSlots = d.slots;
+    
+    if (currentSlots.length === 0) {
+      specsDiv.innerHTML = '<span class="muted">No specifications for this group</span>';
+    } else {
+      specsDiv.innerHTML = currentSlots.map((s, i) => `
+        <label style="display:block; margin-bottom:5px; font-weight:600; font-size:12px;">${esc(s.label)}</label>
+        <select id="cSpec_${i}" style="width:100%; margin-bottom:10px;">
+          <option value="">-- None --</option>
+          ${s.values.map(v => `<option value="${esc(v.value)}">${esc(v.value)}</option>`).join('')}
+        </select>
+      `).join('');
+    }
+    document.getElementById('cSubmit').disabled = false;
+  };
+  
+  document.getElementById('cSubmit').onclick = async () => {
+    const grpId = document.getElementById('cGrp').value;
+    const specs = currentSlots.map((_, i) => document.getElementById('cSpec_' + i).value);
+    
+    const btn = document.getElementById('cSubmit');
     btn.disabled = true;
     btn.textContent = "Saving...";
     try {
-      const res = await post('/api/v1/erp-group/map', { group_name: groupName, subhead_id: subId });
-      if (!res.ok) throw new Error(res.error || res.message || "Failed to map group");
-      toast("Group mapped successfully!", "ok");
+      const res = await post('/api/v1/erp-items/' + encodeURIComponent(code) + '/classify', { group_id: grpId, specs: specs });
+      if (!res.ok) throw new Error(res.error || res.message || "Failed to classify item");
+      toast("ERP Item updated successfully!", "ok");
       closeModal();
       loadMaster();
     } catch(e) {
       toast(e.message, "err");
       btn.disabled = false;
-      btn.textContent = "Save Mapping";
+      btn.textContent = "Update ERP Item";
     }
   };
 };
