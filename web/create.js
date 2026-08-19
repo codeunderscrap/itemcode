@@ -283,6 +283,7 @@
         try {
           c.res = await postJSON("/api/v1/resolve", c.input);
           c.status = "ready";
+          await beginEdit(c);
         } catch (err) {
           c.res = { outcome: "error", blockers: [err.message || "could not resolve this line"] };
           c.status = "error";
@@ -496,20 +497,6 @@
 
     const tags = invoiceTagsHtml(c.line);
 
-    if (res.outcome === "exists") {
-      const h = res.phase1.hit;
-      return `<div class="card" data-i="${c.i}">
-        <div class="top"><div><div class="src">${esc(c.line.description)}</div>
-          <div class="sub">${tags}phase 1 stopped here — this item already has a code</div></div>
-          <span class="badge b-exists">already exists</span></div>
-        <div class="hits"><div class="hit"><code>${esc(h.code)}</code><span>${esc(h.name || "")}</span>
-          <span class="sc">${esc(h.source)} · ${esc(h.how)} · ${h.score}%</span></div></div>
-        <div class="row">
-          <button class="ghost sm" data-act="copy" data-code="${esc(h.code)}" data-i="${c.i}">Copy code</button>
-          <button class="ghost sm" data-act="forcenew" data-i="${c.i}">Not the same item — code it anyway</button>
-        </div></div>`;
-    }
-
     if (c.submitted) {
       const isPushPending = ERP_ENABLED && !c.pushedToErp;
       return `<div class="card" data-i="${c.i}">
@@ -535,26 +522,32 @@
       ? (c.previewRes ? c.previewRes.blockers : ["choose a head, sub-head and group"])
       : (res.blockers || []);
     const disabled = !code || blockers.length > 0;
-    const badgeClass = c.editing ? "b-new" : (res.outcome === "needs_input" ? "b-block" : "b-new");
-    const badgeText = c.editing ? "editing" : (res.outcome === "needs_input" ? "needs input" : "new");
+    const isExisting = res.outcome === "exists";
+    const badgeClass = isExisting ? "b-exists" : "b-new";
+    const badgeText = isExisting ? "already exists" : (c.editing ? "editing" : "new");
+
+    const existingBlock = isExisting ? `
+      <div class="hits" style="margin-bottom:15px"><div class="hit"><code>${esc(res.phase1.hit.code)}</code><span>${esc(res.phase1.hit.name || "")}</span>
+        <span class="sc">${esc(res.phase1.hit.source)} · ${esc(res.phase1.hit.how)} · ${res.phase1.hit.score}%</span></div></div>
+      <div class="row" style="margin-bottom:15px; padding-bottom:15px; border-bottom:1px dashed var(--line);">
+        <button class="ghost sm" data-act="copy" data-code="${esc(res.phase1.hit.code)}" data-i="${c.i}">Copy existing code</button>
+        <span style="font-size:12px; color:var(--tx2); margin-left:10px;">Or continue editing below to create a new one</span>
+      </div>
+    ` : '';
 
     return `<div class="card" data-i="${c.i}">
       <div class="top"><div><div class="src">${esc(c.line.description)}</div>
-        <div class="sub">${tags}${res.new_group && !c.editing ? "no existing group fits — proposing a new one" : "proposed code"}</div></div>
+        <div class="sub">${tags}${isExisting ? "phase 1 stopped here — this item already has a code" : "proposed code"}</div></div>
         <span class="badge ${badgeClass}">${badgeText}</span></div>
 
-      ${!c.editing
-        ? `<div class="ce-phaseline">${phase1Line(res)}</div>
-           <div class="ce-phaseline">${phase2Line(res)}</div>
-           <div class="ce-phaseline">${phase3Line(c)}</div>`
-        : `${renderCascade(c)}${c.sel.groupId === "__newgroup" ? renderNewGroupForm(c) : renderSpecSelects(c)}`}
+      ${existingBlock}
+
+      ${c.sel ? `${renderCascade(c)}${c.sel.groupId === "__newgroup" ? renderNewGroupForm(c) : renderSpecSelects(c)}` : ""}
 
       <div class="codebar">
         <div class="code">${segHtml(code, segs)}</div>
         <span class="grow"></span>
-        ${c.editing
-          ? `<button class="ghost sm" data-act="cancel-edit" data-i="${c.i}">Cancel (Esc)</button>`
-          : `<button class="ghost sm" data-act="edit" data-i="${c.i}">Edit</button>`}
+        ${c.sel && c.sel.groupId && c.sel.groupId !== "__newgroup" ? `<button class="ghost sm" data-act="view-group-items" data-i="${c.i}">View Group Items</button>` : ""}
         <button class="primary sm" data-act="submit" data-i="${c.i}" ${disabled || c.submitting ? "disabled" : ""}>${c.submitting ? "Submitting…" : "Submit (Enter)"}</button>
       </div>
       <div class="legend">
@@ -564,6 +557,25 @@
       </div>
       ${blockers.length ? `<div class="blockers">${blockers.map(esc).join("<br>")}</div>` : ""}
     </div>`;
+      const isPushPending = ERP_ENABLED && !c.pushedToErp;
+      return `<div class="card" data-i="${c.i}">
+        <div class="top"><div><div class="src">${esc(c.line.description)}</div>
+          <div class="sub">${tags}issued ${c.pushedToErp ? "· synced to ERP" : ""}</div></div>
+          <span class="badge b-done">${esc(c.submittedCode)}</span></div>
+        ${c.learnedAlias ? `<div class="ce-tag learn">learned — this wording now matches "${esc(c.learnedAlias)}" automatically next time</div>` : ""}
+        ${isPushPending
+          ? `<div class="codebar" style="margin-top:12px; border-top:1px solid var(--mm-b0,#262f3d); padding-top:12px;">
+              <span class="muted" style="font-size:13px; color:var(--tx3,#687986);">Not synced to ERPNext yet.</span>
+              <span class="grow"></span>
+              <button class="primary sm" data-act="push-card" data-i="${c.i}" ${c.pushing ? "disabled" : ""}>
+                ${c.pushing ? "Pushing..." : "Push to ERP"}
+              </button>
+             </div>`
+          : ""}
+      </div>`;
+    }
+
+    // Legacy phase functions removed since we always render dropdowns now.
   }
 
   // ─────────────────────────────────────────────────── cascade fetching
@@ -766,26 +778,97 @@
     }
   }
 
-  function showConflictModal(c, detail) {
+  async function showGroupItemsModal(c) {
+    if (!c.sel || !c.sel.groupId || c.sel.groupId === "__newgroup") return;
+    try {
+      const d = await getJSON(`/api/v1/item?group_id=${c.sel.groupId}&status=active`);
+      const items = d.items || [];
+      const listHtml = items.length ? items.map(i => `
+        <div style="padding:10px; border-bottom:1px solid var(--line); display:flex; flex-direction:column; gap:4px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <code style="color:var(--acc); font-size:13px; font-weight:bold;">${esc(i.code)}</code>
+            ${ERP_ENABLED && !i.erp_synced_at ? '<span style="font-size:10px; background:var(--warn); color:#fff; padding:2px 4px; border-radius:3px;">NOT SYNCED</span>' : ''}
+          </div>
+          <div style="font-weight:600; font-size:13px;">${esc(i.name)}</div>
+          ${i.description && i.description !== i.name ? `<div style="color:var(--tx2); font-size:12px;">${esc(i.description)}</div>` : ""}
+        </div>
+      `).join("") : '<div style="color:var(--tx2); padding:20px 0; text-align:center;">No items exist in this group yet.</div>';
+
+      modal(`
+        <h2 style="margin-top:0; color:var(--tx1)">Existing Items in ${esc(c.sel.groupName)}</h2>
+        <div style="max-height:400px; overflow-y:auto; background:var(--panel2); border-radius:6px; border:1px solid var(--line); margin-bottom:15px;">
+          ${listHtml}
+        </div>
+        <div class="btnrow" style="display:flex; justify-content:flex-end; gap:8px;">
+          <button class="ghost" onclick="closeModal()">Close</button>
+        </div>
+      `);
+    } catch (err) {
+      toast("Could not fetch group items: " + err.message, "err");
+    }
+  }
+
+  window.acceptExistingItem = async function(cIdx, code, name, desc) {
+    const c = state.cards[cIdx];
+    if (!c) return;
+    c.res.outcome = "exists";
+    c.res.phase1 = { hit: { code, name, source: "accepted conflict", how: "manual", score: 100 } };
+    c.submitted = false; // reset so it shows the top phase1 match
+    closeModal();
+    updateCard(c);
+  };
+
+  async function showConflictModal(c, detail) {
     const ex = detail.existing_item;
+    
+    // Fetch group context if possible
+    let groupItemsHtml = '<div class="ce-spin"></div> Fetching other items in this group...';
+    
     modal(`
       <h2 style="margin-top:0; color:var(--warn)">Code Collision</h2>
       <p style="margin-bottom:15px;">The code <code>${esc(detail.code)}</code> has already been issued to another item.</p>
       
-      <div style="background:var(--panel2); padding:12px; border-radius:6px; margin-bottom:15px; border:1px solid var(--line);">
-        <div style="font-size:11px; color:var(--tx3); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Existing Item</div>
+      <div style="background:var(--panel2); padding:12px; border-radius:6px; margin-bottom:15px; border:1px solid var(--line); border-left:4px solid var(--warn);">
+        <div style="font-size:11px; color:var(--tx3); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Conflicting Item</div>
         <div style="font-weight:600; margin-bottom:4px;">${esc(ex.name)}</div>
         ${ex.description && ex.description !== ex.name ? `<div style="color:var(--tx2); font-size:13px;">${esc(ex.description)}</div>` : ""}
       </div>
       
+      <h3 style="font-size:13px; color:var(--tx2); margin-top:20px; margin-bottom:10px;">Other items in this group:</h3>
+      <div id="conflict-group-list" style="max-height:200px; overflow-y:auto; background:var(--panel2); border-radius:6px; border:1px solid var(--line); margin-bottom:15px; padding:10px;">
+        ${groupItemsHtml}
+      </div>
+
       <p style="margin-bottom:20px; color:var(--tx2); font-size:13px;">
-        To proceed with this line, you must either edit your specifications to differentiate it, or use the "already exists" action to accept the existing code.
+        To proceed, either change your specifications to differentiate this item, or accept the existing code.
       </p>
       
       <div class="btnrow" style="display:flex; justify-content:flex-end; gap:8px;">
-        <button class="ghost" onclick="closeModal()">Close & Edit</button>
+        <button class="ghost" onclick="closeModal()">Close & Edit Specs</button>
+        <button class="primary" onclick="acceptExistingItem(${c.i}, '${esc(detail.code)}', '${esc(ex.name).replace(/'/g, "\\'")}', '${esc(ex.description || '').replace(/'/g, "\\'")}')">Accept Existing Item</button>
       </div>
     `);
+
+    if (c.sel && c.sel.groupId && c.sel.groupId !== "__newgroup") {
+      try {
+        const d = await getJSON(`/api/v1/item?group_id=${c.sel.groupId}&status=active`);
+        const items = d.items || [];
+        const listHtml = items.length ? items.map(i => `
+          <div style="padding:6px 0; border-bottom:1px solid var(--line); display:flex; gap:10px; align-items:baseline;">
+            <code style="color:var(--acc); font-size:12px;">${esc(i.code)}</code>
+            <span style="font-size:12px;">${esc(i.name)}</span>
+          </div>
+        `).join("") : '<div style="color:var(--tx2); font-size:12px;">No other items exist in this group yet.</div>';
+        const listEl = document.getElementById('conflict-group-list');
+        if (listEl) listEl.innerHTML = listHtml;
+      } catch (err) {
+        const listEl = document.getElementById('conflict-group-list');
+        if (listEl) listEl.innerHTML = '<span style="color:var(--warn)">Failed to load group items.</span>';
+      }
+    } else {
+      const listEl = document.getElementById('conflict-group-list');
+      if (listEl) listEl.innerHTML = '<span style="color:var(--tx2)">Group context not available.</span>';
+    }
   }
 
   // ──────────────────────────────────────────────────────── delegation
@@ -817,6 +900,7 @@
       if (act === "edit") { await beginEdit(c); return; }
       if (act === "cancel-edit") { c.editing = false; c.sel = null; c.previewRes = null; updateCard(c); return; }
       if (act === "submit") { await submitCard(c); return; }
+      if (act === "view-group-items") { await showGroupItemsModal(c); return; }
       if (act === "push-card") { await pushCardToErp(c); return; }
 
       if (act === "apply-newgroup") {
