@@ -494,9 +494,24 @@ def _apply_answer(lc, ans, threshold):
 
 
 # ----------------------------------------------------------------- assembly
-def _existing_result(lc):
-    return {"input": lc["payload"], "phase1": lc["phase1"], "phase2": None, "phase3": None,
-            "action": "existing", "code": lc["phase1"]["hit"]["code"], "blockers": [],
+def _existing_result(con, lc):
+    code = lc["phase1"]["hit"]["code"]
+    item = con.execute("SELECT grp_id, s1, s2, s3, s4, vend FROM item WHERE code=?", (code,)).fetchone()
+    p2, p3 = None, None
+    if item and item["grp_id"]:
+        grp = con.execute("SELECT g.id, g.name, g.code3, g.uom, g.labels, g.status, s.id AS sub_id, s.name AS sub_name, s.code2 AS sub_code, h.id AS head_id, h.name AS head_name, h.code2 AS head_code FROM grp g JOIN subhead s ON s.id=g.subhead_id JOIN head h ON h.id=s.head_id WHERE g.id=?", (item["grp_id"],)).fetchone()
+        if grp:
+            p2 = {"phase": 2, "group": dict(grp), "steps": []}
+            p3 = {"phase": 3, "slots": [], "vendor": None, "steps": []}
+            for slot in (1, 2, 3, 4):
+                val_id = item[f"s{slot}"]
+                if val_id:
+                    p3["slots"].append({"slot": slot, "specval_id": val_id})
+            if item["vend"]:
+                p3["vendor"] = {"specval_id": item["vend"]}
+                
+    return {"input": lc["payload"], "phase1": lc["phase1"], "phase2": p2, "phase3": p3,
+            "action": "existing", "code": code, "blockers": [],
             "matched_by": "exact"}
 
 
@@ -676,7 +691,7 @@ def resolve_batch(con, matcher, payloads, user=None):
         lc = _build_line_context(con, matcher, payload)
         if lc["skip_llm"]:
             if lc["phase1"]["hit"] and not (lc["hints"].get("force_new")):
-                results[i] = _existing_result(lc)
+                results[i] = _existing_result(con, lc)
             else:
                 decision = _apply_forced(lc, _rules_decision(lc, threshold))
                 results[i] = _assemble_result(con, matcher, lc, decision)
