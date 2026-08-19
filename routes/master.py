@@ -877,5 +877,5 @@ ROUTES = [
     ("GET", "/api/v1/erp-items", erp_items_v1),
     ("GET", "/api/v1/erp-taxonomy/missing", missing_erp_taxonomy),
     ("POST", "/api/v1/erp-group/map", map_erp_group),
-    ("POST", "/api/v1/erp-items/<str>/classify", classify_erp_item),
+    ("POST", "/api/v1/erp-items/<code>/classify", classify_erp_item),
 ]
