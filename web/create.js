@@ -521,8 +521,7 @@
     const blockers = c.editing
       ? (c.previewRes ? c.previewRes.blockers : ["choose a head, sub-head and group"])
       : (res.blockers || []);
-    const isConflictOnly = blockers.length === 1 && blockers[0].includes("already issued");
-    const disabled = !code || (blockers.length > 0 && !isConflictOnly);
+    const disabled = !code || blockers.length > 0;
     const isExisting = res.outcome === "exists";
     const badgeClass = isExisting ? "b-exists" : "b-new";
     const badgeText = isExisting ? "already exists" : (c.editing ? "editing" : "new");
@@ -549,14 +548,26 @@
         <div class="code">${segHtml(code, segs)}</div>
         <span class="grow"></span>
         ${c.sel && c.sel.groupId && c.sel.groupId !== "__newgroup" ? `<button class="ghost sm" data-act="view-group-items" data-i="${c.i}">View Group Items</button>` : ""}
-        <button class="primary sm" data-act="submit" data-i="${c.i}" ${disabled || c.submitting ? "disabled" : ""}>${c.submitting ? "Submitting…" : "Submit (Enter)"}</button>
+        ${c.previewRes && c.previewRes.conflict ? 
+          `<button class="primary sm" style="background:var(--bad); border-color:var(--bad);" data-act="resolve-conflict" data-i="${c.i}">Resolve Conflict...</button>` : 
+          `<button class="primary sm" data-act="submit" data-i="${c.i}" ${disabled || c.submitting ? "disabled" : ""}>${c.submitting ? "Submitting…" : "Submit (Enter)"}</button>`
+        }
       </div>
       <div class="legend">
         <span><i class="s1">▮</i> head + sub-head</span><span><i class="s2">▮</i> group</span>
         <span><i class="s3">▮</i> specification</span><span><i class="s0">▮</i> 00 = not applicable</span>
         <span><i class="s5">▮</i> vendor</span>
       </div>
-      ${blockers.length ? `<div class="blockers">${blockers.map(esc).join("<br>")}</div>` : ""}
+      ${c.previewRes && c.previewRes.conflict ? `
+        <div style="margin-top:15px; padding:12px; background:color-mix(in srgb, var(--bad) 15%, transparent); border:1px solid color-mix(in srgb, var(--bad) 40%, transparent); border-radius:6px; border-left:4px solid var(--bad);">
+          <div style="color:var(--bad); font-weight:600; margin-bottom:4px; font-size:13px;">⚠️ Code Collision: ${esc(c.previewRes.code)}</div>
+          <div style="font-size:13px; color:var(--tx); margin-bottom:10px;">This exact specification combination is already assigned to:</div>
+          <div style="background:var(--panel); padding:8px 10px; border-radius:4px; font-weight:600; font-size:13px; border:1px solid var(--line);">
+            ${esc(c.previewRes.conflict.name)}
+            ${c.previewRes.conflict.description && c.previewRes.conflict.description !== c.previewRes.conflict.name ? `<div style="color:var(--tx2); font-weight:normal; margin-top:4px;">${esc(c.previewRes.conflict.description)}</div>` : ""}
+          </div>
+        </div>
+      ` : (blockers.length ? `<div class="blockers">${blockers.map(esc).join("<br>")}</div>` : "")}
     </div>`;
   }
 
@@ -882,6 +893,13 @@
       if (act === "edit") { await beginEdit(c); return; }
       if (act === "cancel-edit") { c.editing = false; c.sel = null; c.previewRes = null; updateCard(c); return; }
       if (act === "submit") { await submitCard(c); return; }
+      if (act === "resolve-conflict") {
+        showConflictModal(c, {
+          code: c.previewRes.code,
+          existing_item: c.previewRes.conflict
+        });
+        return;
+      }
       if (act === "view-group-items") { await showGroupItemsModal(c); return; }
       if (act === "push-card") { await pushCardToErp(c); return; }
 

@@ -190,11 +190,15 @@ def resolve_preview(req):
 
     code = C.assemble(g["head_code"], g["sub_code"], g["code3"], slots, vend)
     free = C.code_is_free(con, code)
+    conflict_detail = None
     if not free:
+        existing = con.execute("SELECT name, description FROM item WHERE code=?", (code,)).fetchone()
+        if existing:
+            conflict_detail = {"name": existing["name"], "description": existing["description"]}
         blockers.append(f"{code} is already issued - adjust a spec value or pick the existing item.")
 
     return ok({
-        "code": code, "free": free, "blockers": blockers,
+        "code": code, "free": free, "blockers": blockers, "conflict": conflict_detail,
         "group": {"id": g["id"], "name": g["name"], "code3": g["code3"], "uom": g["uom"]},
         "slots": detail, "vendor": vend_detail, "matched_by": "operator",
         # same shape as resolve()'s out["segments"], so the client's one
@@ -242,9 +246,6 @@ def commit_v1(req):
         raise ApiError("VALIDATION", "missing idempotency_key - resend the same key on retry")
 
     blockers = proposal.get("blockers") or []
-    if len(blockers) == 1 and "already issued" in blockers[0]:
-        blockers = []
-
     if blockers:
         raise ApiError("VALIDATION", "this line still has open questions - answer them before submitting",
                        detail={"blockers": blockers})
