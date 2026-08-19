@@ -649,6 +649,23 @@ def erp_items_v1(req):
     try:
         erp.login()
         items = erp.pull_items(limit=5000, con=ctx.con)
+        
+        grp_map = {}
+        rows = ctx.con.execute("""
+            SELECT g.name as gname, s.name as sname, h.name as hname
+            FROM grp g
+            JOIN subhead s ON s.id=g.subhead_id
+            JOIN head h ON h.id=s.head_id
+        """).fetchall()
+        for r in rows:
+            grp_map[r["gname"]] = {"head": r["hname"], "subhead": r["sname"]}
+            
+        for item in items:
+            m = grp_map.get(item.get("item_group"))
+            if m:
+                item["head_name"] = m["head"]
+                item["subhead_name"] = m["subhead"]
+                
         return ok({"items": items, "count": len(items)})
     except Exception as e:  # noqa: BLE001
         return ok({"items": [], "error": f"{e.__class__.__name__}: {e}"})

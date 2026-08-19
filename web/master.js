@@ -67,10 +67,13 @@ async function fetchErpItems() {
 }
 
 function renderErpOnlyRow(item) {
+  const hs = (item.head_name && item.subhead_name) 
+             ? `<div class="p"><b>${esc(item.head_name)}</b></div><div class="s">${esc(item.subhead_name)}</div>` 
+             : `<span class="muted">—</span>`;
   return `<tr style="opacity:.8;background:var(--panel2,#1a1f2e)">
     <td><code>${esc(item.name || '')}</code></td>
     <td>${esc(item.item_name || item.name || '')}</td>
-    <td><span class="muted">—</span></td>
+    <td>${hs}</td>
     <td>${esc(item.item_group || '–')}</td>
     <td><span class="muted">—</span></td>
     <td>—</td><td>${esc(item.stock_uom || '')}</td><td>—</td>
