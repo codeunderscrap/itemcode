@@ -69,7 +69,7 @@ async function fetchErpItems() {
 function renderErpOnlyRow(item) {
   const hs = (item.head_name && item.subhead_name) 
              ? `<div class="p"><b>${esc(item.head_name)}</b></div><div class="s">${esc(item.subhead_name)}</div>` 
-             : `<button class="ghost sm" style="font-size:11px; padding:3px 6px;" onclick="app.showMapErpGroupModal('${esc(item.item_group || '').replace(/'/g, "\\'")}')">+ Set Hierarchy</button>`;
+             : `<button class="ghost sm" style="font-size:11px; padding:3px 6px;" onclick="showMapErpGroupModal('${esc(item.item_group || '').replace(/'/g, "\\'")}')">+ Set Hierarchy</button>`;
   const specs = (item.specs_list && item.specs_list.length > 0)
              ? item.specs_list.map(esc).join('<br>')
              : `<span class="muted">—</span>`;
@@ -439,7 +439,7 @@ async function openPushReviewModal(code) {
   };
 }
 
-app.showMapErpGroupModal = async function(groupName) {
+window.showMapErpGroupModal = async function(groupName) {
   modal(`
     <h3 style="margin-top:0">Set Hierarchy for ERP Group</h3>
     <p style="margin-bottom:15px; color:var(--tx2); font-size:13px;">
