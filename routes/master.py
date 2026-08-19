@@ -747,10 +747,10 @@ def missing_erp_taxonomy(req):
     erp.login()
     groups_dict = erp.pull_item_groups(con) # { name: parent }
     
-    from core.db import D
-    local_heads = {r["name"]: r["id"] for r in D.rows(con, "SELECT id, name FROM head")}
-    local_subs = {r["name"]: {"id": r["id"], "head_name": r["hname"]} for r in D.rows(con, "SELECT s.id, s.name, h.name as hname FROM subhead s JOIN head h ON h.id=s.head_id")}
-    local_grps = {r["name"]: r["sname"] for r in D.rows(con, "SELECT g.name, s.name as sname FROM grp g JOIN subhead s ON s.id=g.subhead_id")}
+    from core.db import rows
+    local_heads = {r["name"]: r["id"] for r in rows(con, "SELECT id, name FROM head")}
+    local_subs = {r["name"]: {"id": r["id"], "head_name": r["hname"]} for r in rows(con, "SELECT s.id, s.name, h.name as hname FROM subhead s JOIN head h ON h.id=s.head_id")}
+    local_grps = {r["name"]: r["sname"] for r in rows(con, "SELECT g.name, s.name as sname FROM grp g JOIN subhead s ON s.id=g.subhead_id")}
     
     root_parent = "All Item Groups"
     for lh in local_heads:
