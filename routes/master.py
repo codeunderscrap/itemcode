@@ -705,12 +705,12 @@ def map_erp_group(req):
     subhead_id = int(subhead_id)
     
     # Check if group already exists locally
-    from core.db import _one
-    existing = _one(con, "SELECT id, code3 FROM grp WHERE name=?", (group_name,))
+    from core.db import one
+    existing = one(con, "SELECT id, code3 FROM grp WHERE name=?", (group_name,))
     if existing:
         return ok({"message": "Group already exists locally", "id": existing["id"]})
         
-    sub = _one(con, "SELECT s.name AS subhead_name, h.name AS head_name FROM subhead s JOIN head h ON h.id=s.head_id WHERE s.id=?", (subhead_id,))
+    sub = one(con, "SELECT s.name AS subhead_name, h.name AS head_name FROM subhead s JOIN head h ON h.id=s.head_id WHERE s.id=?", (subhead_id,))
     if not sub:
         raise ApiError("NOT_FOUND", "Sub-head not found")
         
@@ -810,8 +810,8 @@ def classify_erp_item(req):
     if not code or not group_id:
         raise ApiError("VALIDATION", "Code and group_id are required")
         
-    from core.db import _one
-    grp = _one(con, "SELECT name FROM grp WHERE id=?", (group_id,))
+    from core.db import one
+    grp = one(con, "SELECT name FROM grp WHERE id=?", (group_id,))
     if not grp:
         raise ApiError("NOT_FOUND", "Group not found")
         
@@ -828,7 +828,7 @@ def classify_erp_item(req):
     for i in range(1, 5):
         val = specs[i-1] if i <= len(specs) else None
         if val:
-            sv = _one(con, "SELECT code2 FROM specval WHERE grp_id=? AND slot=? AND value=?", (group_id, i, val))
+            sv = one(con, "SELECT code2 FROM specval WHERE grp_id=? AND slot=? AND value=?", (group_id, i, val))
             code2 = sv["code2"] if sv else "00"
             erp._ensure_item_specification(item_group, val, code2, i)
             payload[f"item_specification_{i}"] = f"{item_group}-{val}-{code2}"
