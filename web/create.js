@@ -521,7 +521,8 @@
     const blockers = c.editing
       ? (c.previewRes ? c.previewRes.blockers : ["choose a head, sub-head and group"])
       : (res.blockers || []);
-    const disabled = !code || blockers.length > 0;
+    const isConflictOnly = blockers.length === 1 && blockers[0].includes("already issued");
+    const disabled = !code || (blockers.length > 0 && !isConflictOnly);
     const isExisting = res.outcome === "exists";
     const badgeClass = isExisting ? "b-exists" : "b-new";
     const badgeText = isExisting ? "already exists" : (c.editing ? "editing" : "new");

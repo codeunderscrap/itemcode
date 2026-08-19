@@ -242,6 +242,9 @@ def commit_v1(req):
         raise ApiError("VALIDATION", "missing idempotency_key - resend the same key on retry")
 
     blockers = proposal.get("blockers") or []
+    if len(blockers) == 1 and "already issued" in blockers[0]:
+        blockers = []
+
     if blockers:
         raise ApiError("VALIDATION", "this line still has open questions - answer them before submitting",
                        detail={"blockers": blockers})
