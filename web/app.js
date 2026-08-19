@@ -572,6 +572,79 @@ async function mergeDialog(g) {
   };
 }
 
+async function showErpSyncModal() {
+  modal('<h3>Sync from ERPNext</h3><p>Analyzing ERPNext taxonomy...</p>');
+  let res;
+  try {
+    res = await api('/api/v1/erp-taxonomy/missing');
+  } catch(e) {
+    return modal('<h3>Sync from ERPNext</h3><p class="dr">' + esc(e.message) + '</p>');
+  }
+  
+  if (!res.heads.length && !res.subheads.length && !res.groups.length) {
+    return modal(`<h3>Sync from ERPNext</h3><p>Your local dictionary is perfectly in sync with ERPNext!</p>
+      <div style="text-align:right"><button class="ghost" onclick="closeModal()">Close</button></div>`);
+  }
+  
+  const renderList = (items, type) => items.map(item => `
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--line);">
+      <div>
+        <b>${esc(item.name)}</b>
+        ${item.parent ? `<br><span class="muted" style="font-size:11px">under ${esc(item.parent)}</span>` : ''}
+      </div>
+      <button class="ghost sm" onclick="importErpTaxonomy('${type}', '${esc(item.name.replace(/'/g, "\\'"))}', ${item.parent_id})">Import</button>
+    </div>
+  `).join('');
+  
+  modal(`
+    <h3 style="margin-top:0">Sync from ERPNext</h3>
+    <p style="margin-bottom:15px; color:var(--tx2); font-size:13px;">
+      The following classifications exist in ERPNext but are missing locally. Import them to make them available in the generator.
+      You must import parents before importing their children.
+    </p>
+    <div style="max-height:400px; overflow-y:auto; margin-bottom:15px; padding-right:10px;">
+      ${res.heads.length ? `<h4 style="margin:10px 0 5px;">Missing Heads</h4>${renderList(res.heads, 'head')}` : ''}
+      ${res.subheads.length ? `<h4 style="margin:15px 0 5px;">Missing Sub-heads</h4>${renderList(res.subheads, 'subhead')}` : ''}
+      ${res.groups.length ? `<h4 style="margin:15px 0 5px;">Missing Groups</h4>${renderList(res.groups, 'group')}` : ''}
+    </div>
+    <div style="text-align:right"><button class="ghost" onclick="closeModal()">Done</button></div>
+  `);
+}
+
+window.importErpTaxonomy = async function(type, name, parentId) {
+  if (type === 'subhead' && !parentId) return toast("You must import the parent Head first!", "err");
+  if (type === 'group' && !parentId) return toast("You must import the parent Sub-head first!", "err");
+  
+  let payload = { name: name };
+  let url = '';
+  
+  if (type === 'head') {
+    url = '/api/head/add';
+  } else if (type === 'subhead') {
+    url = '/api/subhead/add';
+    payload.head_id = parentId;
+  } else if (type === 'group') {
+    url = '/api/group/add';
+    payload.subhead_id = parentId;
+    const uom = prompt(`What is the default UOM for ${name}?`, 'Nos');
+    if (!uom) return;
+    payload.uom = uom;
+  }
+  
+  try {
+    const res = await post(url, payload);
+    if (!res.ok) throw new Error(res.error || "Failed to import");
+    toast(`Successfully imported ${name}!`, "ok");
+    BOOT = await api('/api/boot');
+    loadGroups();
+    showErpSyncModal();
+  } catch(e) {
+    toast(e.message, "err");
+  }
+};
+
+$('#btnSyncErp').onclick = showErpSyncModal;
+
 $('#btnNewGroup').onclick = () => {
   const headOpts = BOOT.heads.map(h => `<option value="${h.id}">${esc(h.name)} (${h.code2})</option>`).join('');
   const subOpts = BOOT.subheads.map(s =>

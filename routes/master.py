@@ -734,6 +734,68 @@ def map_erp_group(req):
     return ok({"id": grp["id"], "code3": grp["code3"]})
 
 
+def missing_erp_taxonomy(req):
+    """GET /api/v1/erp-taxonomy/missing — Finds Heads, Subheads, and Groups in ERPNext
+    that are not registered in the local generator database."""
+    require_session(req)
+    con = ctx.con
+    from core.erp import ERP
+    erp = ERP().refresh(con)
+    if not erp.enabled:
+        return ok({"heads": [], "subheads": [], "groups": []})
+        
+    erp.login()
+    groups_dict = erp.pull_item_groups(con) # { name: parent }
+    
+    from core.db import _all
+    local_heads = {r["name"]: r["id"] for r in _all(con, "SELECT id, name FROM head")}
+    local_subs = {r["name"]: {"id": r["id"], "head_name": r["hname"]} for r in _all(con, "SELECT s.id, s.name, h.name as hname FROM subhead s JOIN head h ON h.id=s.head_id")}
+    local_grps = {r["name"]: r["sname"] for r in _all(con, "SELECT g.name, s.name as sname FROM grp g JOIN subhead s ON s.id=g.subhead_id")}
+    
+    root_parent = "All Item Groups"
+    for lh in local_heads:
+        if lh in groups_dict and groups_dict[lh]:
+            root_parent = groups_dict[lh]
+            break
+            
+    erp_heads = set()
+    erp_subs = {}
+    erp_grps = {}
+    
+    for name, parent in groups_dict.items():
+        if parent == root_parent:
+            erp_heads.add(name)
+            
+    for name, parent in groups_dict.items():
+        if parent in erp_heads or parent in local_heads:
+            erp_subs[name] = parent
+            
+    for name, parent in groups_dict.items():
+        if parent in erp_subs or parent in local_subs:
+            erp_grps[name] = parent
+            
+    missing_heads = [{"name": h} for h in erp_heads if h not in local_heads]
+    
+    missing_subs = []
+    for s, p in erp_subs.items():
+        if s not in local_subs:
+            # Check if parent is local, provide its ID
+            p_id = local_heads.get(p)
+            missing_subs.append({"name": s, "parent": p, "parent_id": p_id})
+            
+    missing_grps = []
+    for g, p in erp_grps.items():
+        if g not in local_grps:
+            p_id = local_subs[p]["id"] if p in local_subs else None
+            missing_grps.append({"name": g, "parent": p, "parent_id": p_id})
+    
+    return ok({
+        "heads": sorted(missing_heads, key=lambda x: x["name"]),
+        "subheads": sorted(missing_subs, key=lambda x: x["name"]),
+        "groups": sorted(missing_grps, key=lambda x: x["name"])
+    })
+
+
 def classify_erp_item(req):
     """POST /api/v1/erp-items/<code>/classify — Assigns an ERP-only item to a local
     group and sets its specifications in ERPNext, without renaming it."""
@@ -813,6 +875,7 @@ ROUTES = [
     ("GET", "/api/v1/export", export_v1),
     ("GET", "/api/v1/download/<file>", download_v1),
     ("GET", "/api/v1/erp-items", erp_items_v1),
+    ("GET", "/api/v1/erp-taxonomy/missing", missing_erp_taxonomy),
     ("POST", "/api/v1/erp-group/map", map_erp_group),
     ("POST", "/api/v1/erp-items/<str>/classify", classify_erp_item),
 ]
