@@ -261,7 +261,8 @@ class ERP:
         self.login()
         out, start, page = [], 0, 500
         fields = urllib.parse.quote(json.dumps(
-            ["name", "item_name", "item_group", "stock_uom", "disabled", "owner"]))
+            ["name", "item_name", "item_group", "stock_uom", "disabled", "owner",
+             "item_specification_1", "item_specification_2", "item_specification_3", "item_specification_4"]))
         while start < limit:
             d = self._resource("GET", "Item",
                                 query=f"fields={fields}&limit_start={start}&limit_page_length={page}")

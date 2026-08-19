@@ -667,6 +667,18 @@ def erp_items_v1(req):
                 else:
                     item["subhead_name"] = "—"
                     item["head_name"] = "—"
+
+            specs = []
+            grp_prefix = (grp or "") + "-"
+            for i in range(1, 5):
+                sp = item.get(f"item_specification_{i}")
+                if sp:
+                    if sp.startswith(grp_prefix):
+                        sp = sp[len(grp_prefix):]
+                    if len(sp) > 3 and sp[-3] == "-":
+                        sp = sp[:-3]
+                    specs.append(sp)
+            item["specs_list"] = specs
                 
         return ok({"items": items, "count": len(items)})
     except Exception as e:  # noqa: BLE001
