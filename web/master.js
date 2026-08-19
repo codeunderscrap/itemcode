@@ -527,14 +527,22 @@ window.showClassifyErpModal = async function(code) {
     }
     
     const d = await api('/api/v1/cascade/slots?group=' + grpSel.value);
-    currentSlots = d.slots;
+    const labels = d.labels || {};
+    const specs = d.specs || {};
+    
+    currentSlots = [];
+    for (let i = 1; i <= 4; i++) {
+        if (labels[i]) {
+            currentSlots.push({ slot: i, label: labels[i], values: specs[i] || [] });
+        }
+    }
     
     if (currentSlots.length === 0) {
       specsDiv.innerHTML = '<span class="muted">No specifications for this group</span>';
     } else {
-      specsDiv.innerHTML = currentSlots.map((s, i) => `
+      specsDiv.innerHTML = currentSlots.map(s => `
         <label style="display:block; margin-bottom:5px; font-weight:600; font-size:12px;">${esc(s.label)}</label>
-        <select id="cSpec_${i}" style="width:100%; margin-bottom:10px;">
+        <select id="cSpec_${s.slot}" style="width:100%; margin-bottom:10px;">
           <option value="">-- None --</option>
           ${s.values.map(v => `<option value="${esc(v.value)}">${esc(v.value)}</option>`).join('')}
         </select>
@@ -545,13 +553,16 @@ window.showClassifyErpModal = async function(code) {
   
   document.getElementById('cSubmit').onclick = async () => {
     const grpId = document.getElementById('cGrp').value;
-    const specs = currentSlots.map((_, i) => document.getElementById('cSpec_' + i).value);
+    const specsParams = [1, 2, 3, 4].map(i => {
+      const el = document.getElementById('cSpec_' + i);
+      return el ? el.value : "";
+    });
     
     const btn = document.getElementById('cSubmit');
     btn.disabled = true;
     btn.textContent = "Saving...";
     try {
-      const res = await post('/api/v1/erp-items/' + encodeURIComponent(code) + '/classify', { group_id: grpId, specs: specs });
+      const res = await post('/api/v1/erp-items/' + encodeURIComponent(code) + '/classify', { group_id: grpId, specs: specsParams });
       if (!res.ok) throw new Error(res.error || res.message || "Failed to classify item");
       toast("ERP Item updated successfully!", "ok");
       closeModal();
