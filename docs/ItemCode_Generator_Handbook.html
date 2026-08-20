@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Item Code Studio — User Handbook</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-dark: #0a2832;
+            --primary: #134e5e;
+            --accent: #00bcd4;
+            --accent-light: #e0f7fa;
+            --text-main: #333333;
+            --text-light: #666666;
+            --bg-page: #f8f9fa;
+            
+            --tip-border: #4caf50;
+            --tip-bg: #e8f5e9;
+            --warn-border: #ff9800;
+            --warn-bg: #fff3e0;
+            --imp-border: #2196f3;
+            --imp-bg: #e3f2fd;
+            --note-border: #9e9e9e;
+            --note-bg: #f5f5f5;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            color: var(--text-main);
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-page);
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            padding: 40px;
+        }
+
+        /* Cover Page */
+        .cover-page {
+            height: calc(100vh - 80px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+            color: white;
+            margin: -40px -40px 40px -40px;
+            padding: 40px;
+        }
+
+        .cover-title {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 20px;
+            color: white;
+        }
+
+        .cover-subtitle {
+            font-size: 1.5rem;
+            font-weight: 300;
+            margin-bottom: 40px;
+            color: var(--accent-light);
+        }
+
+        .cover-meta {
+            margin-top: auto;
+            font-size: 1.1rem;
+            opacity: 0.8;
+        }
+
+        /* Typography & Headers */
+        h1, h2, h3, h4 {
+            color: var(--primary-dark);
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+        }
+
+        h1.section-title {
+            background: linear-gradient(90deg, var(--primary-dark), var(--primary));
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            font-size: 2rem;
+            margin-top: 2em;
+            display: flex;
+            align-items: center;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            border-bottom: 2px solid var(--accent-light);
+            padding-bottom: 5px;
+            color: var(--primary);
+        }
+
+        h3 {
+            font-size: 1.2rem;
+            color: var(--primary);
+        }
+
+        /* TOC */
+        .toc-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .toc-list li {
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .toc-list a {
+            text-decoration: none;
+            color: var(--primary);
+            font-weight: 600;
+            flex-grow: 1;
+            position: relative;
+        }
+
+        .toc-list a::after {
+            content: "";
+            position: absolute;
+            bottom: 6px;
+            left: 0;
+            right: 0;
+            margin-left: calc(100% + 5px); /* push past text */
+            border-bottom: 1px dotted var(--text-light);
+            width: 100%;
+        }
+
+        .toc-sub {
+            margin-left: 20px;
+            font-weight: 400 !important;
+            color: var(--text-main) !important;
+        }
+
+        /* Callouts */
+        .callout {
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-left: 5px solid;
+            border-radius: 4px;
+        }
+
+        .callout-title {
+            font-weight: 700;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .callout.tip { border-color: var(--tip-border); background-color: var(--tip-bg); }
+        .callout.tip .callout-title { color: var(--tip-border); }
+
+        .callout.warning { border-color: var(--warn-border); background-color: var(--warn-bg); }
+        .callout.warning .callout-title { color: var(--warn-border); }
+
+        .callout.important { border-color: var(--imp-border); background-color: var(--imp-bg); }
+        .callout.important .callout-title { color: var(--imp-border); }
+
+        .callout.note { border-color: var(--note-border); background-color: var(--note-bg); }
+        .callout.note .callout-title { color: #666; }
+
+        /* Steps */
+        .step-list {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .step-list li {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .step-num {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            width: 24px;
+            height: 24px;
+            background-color: var(--accent);
+            color: white;
+            border-radius: 50%;
+            font-size: 0.85rem;
+            font-weight: bold;
+            margin-right: 10px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        /* Images */
+        .screenshot-container {
+            margin: 30px 0;
+            text-align: center;
+        }
+
+        .screenshot-container img {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+            border: 1px solid #eee;
+        }
+
+        .caption {
+            font-style: italic;
+            color: var(--text-light);
+            font-size: 0.9rem;
+            margin-top: 10px;
+            display: block;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: var(--primary);
+            color: white;
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background-color: var(--accent);
+            color: white;
+        }
+
+        .badge.orange {
+            background-color: #ff9800;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            font-size: 0.85rem;
+            color: var(--text-light);
+        }
+
+        /* Code/Text Highlighting */
+        code {
+            font-family: 'Consolas', monospace;
+            background-color: #f1f1f1;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #d81b60;
+        }
+
+        /* Print Styles */
+        @media print {
+            body { background-color: white; }
+            .container { 
+                box-shadow: none; 
+                padding: 0; 
+                max-width: 100%; 
+            }
+            .page-break { page-break-before: always; }
+            .cover-page { 
+                height: 100vh; 
+                margin: 0; 
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            h1.section-title {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .step-num, .badge, th {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .callout {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .toc-list a::after {
+                border-bottom-color: #ccc;
+            }
+            a { text-decoration: none; color: black; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- COVER PAGE -->
+    <div class="cover-page">
+        <div class="cover-title">Item Code Studio</div>
+        <div class="cover-subtitle">User Handbook<br>Complete Guide to Managing Item Codes & ERPNext Synchronization</div>
+        <div class="cover-meta">
+            <strong>Minimines Cleantech Pvt. Ltd.</strong><br>
+            Version: 2.0 | August 2026
+        </div>
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- TABLE OF CONTENTS -->
+    <h1 class="section-title" id="toc">TABLE OF CONTENTS</h1>
+    <ul class="toc-list">
+        <li><a href="#sec-1">1. GETTING STARTED</a></li>
+        <li><a class="toc-sub" href="#sec-1-1">1.1 What is Item Code Studio?</a></li>
+        <li><a class="toc-sub" href="#sec-1-2">1.2 Logging In</a></li>
+        <li><a class="toc-sub" href="#sec-1-3">1.3 Navigation</a></li>
+        
+        <li><a href="#sec-2">2. CREATE CODES (Code Generator)</a></li>
+        <li><a class="toc-sub" href="#sec-2-1">2.1 Two Input Methods</a></li>
+        <li><a class="toc-sub" href="#sec-2-2">2.2 Resolution Results</a></li>
+        <li><a class="toc-sub" href="#sec-2-3">2.3 Editing & Fine-Tuning</a></li>
+        <li><a class="toc-sub" href="#sec-2-4">2.4 Tax Template & HSN Code</a></li>
+        <li><a class="toc-sub" href="#sec-2-5">2.5 Creating a New Group</a></li>
+        <li><a class="toc-sub" href="#sec-2-6">2.6 Success — Code Issued!</a></li>
+        <li><a class="toc-sub" href="#sec-2-7">2.7 Handling Duplicates</a></li>
+
+        <li><a href="#sec-3">3. ITEM MASTER (The Working Master)</a></li>
+        <li><a class="toc-sub" href="#sec-3-1">3.1 Overview</a></li>
+        <li><a class="toc-sub" href="#sec-3-2">3.2 Filtering & Searching</a></li>
+        <li><a class="toc-sub" href="#sec-3-3">3.3 Editing an Item</a></li>
+        <li><a class="toc-sub" href="#sec-3-4">3.4 ERP-Only Items</a></li>
+        <li><a class="toc-sub" href="#sec-3-5">3.5 Classifying ERP-Only Items</a></li>
+        <li><a class="toc-sub" href="#sec-3-6">3.6 Pushing to ERPNext</a></li>
+        <li><a class="toc-sub" href="#sec-3-7">3.7 Export to Excel</a></li>
+
+        <li><a href="#sec-4">4. DICTIONARY (Taxonomy Manager)</a></li>
+        <li><a class="toc-sub" href="#sec-4-1">4.1 Overview</a></li>
+        <li><a class="toc-sub" href="#sec-4-2">4.2 Group Details</a></li>
+        <li><a class="toc-sub" href="#sec-4-3">4.3 Managing Groups</a></li>
+        <li><a class="toc-sub" href="#sec-4-4">4.4 Creating New Taxonomy</a></li>
+        <li><a class="toc-sub" href="#sec-4-5">4.5 Sync from ERPNext ⭐ NEW</a></li>
+
+        <li><a href="#sec-5">5. DECODER</a></li>
+        <li><a href="#sec-6">6. ACTIVITY LOG</a></li>
+        <li><a href="#sec-7">7. SETTINGS</a></li>
+        <li><a href="#sec-8">8. QUICK REFERENCE</a></li>
+    </ul>
+
+    <div class="page-break"></div>
+
+    <!-- 1. GETTING STARTED -->
+    <h1 class="section-title" id="sec-1">1. GETTING STARTED</h1>
+    
+    <h2 id="sec-1-1">1.1 What is Item Code Studio?</h2>
+    <p>A web-based tool that generates mathematically structured 15-digit item codes. Every item in your inventory gets a unique code built from a hierarchy:</p>
+    <ul>
+        <li><strong>Head</strong> (2 letters) — e.g., RM = Raw Materials, AO = Admin & Office, CA = Capital Assets</li>
+        <li><strong>Sub-head</strong> (2 letters) — e.g., BS = Battery Scrap, CH = Chemicals</li>
+        <li><strong>Group</strong> (3 digits) — e.g., 001 = Cobalt Hydroxide, 002 = Battery Pack</li>
+        <li><strong>Spec 1-4</strong> (2 digits each) — Size, Type, Chemistry, etc.</li>
+        <li><strong>Vendor</strong> (2 digits) — Supplier code</li>
+    </ul>
+    <p>Example: <code>RMBS 001 02 02 01 01 00</code> = Raw Materials > Battery Scrap > Cobalt Hydroxide > specific specs</p>
+
+    <h2 id="sec-1-2">1.2 Logging In</h2>
+    <p>Open the app URL in your browser. Enter your username and password. Contact your administrator for credentials.</p>
+
+    <h2 id="sec-1-3">1.3 Navigation</h2>
+    <p>The left sidebar has 5 main tabs:</p>
+    <ul>
+        <li><strong>Create codes</strong> — Generate new item codes</li>
+        <li><strong>Item master</strong> — View/edit all items</li>
+        <li><strong>Dictionary</strong> — Manage taxonomy (Heads, Sub-heads, Groups)</li>
+        <li><strong>Decoder</strong> — Reverse-lookup any code</li>
+        <li><strong>Activity</strong> — Audit trail of all changes</li>
+    </ul>
+
+    <div class="screenshot-container">
+        <img src="handbook_images/01_full_overview.png" alt="Main Interface Overview">
+        <span class="caption">The main interface showing the sidebar navigation and Create Codes workspace</span>
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- 2. CREATE CODES -->
+    <h1 class="section-title" id="sec-2">2. CREATE CODES (Code Generator)</h1>
+    <p>This is the primary workspace where you mint new item codes.</p>
+
+    <h2 id="sec-2-1">2.1 Two Input Methods</h2>
+    
+    <h3>Method A: Type / Paste</h3>
+    <p>Manually type or paste item descriptions, one per line.</p>
+    
+    <div class="screenshot-container">
+        <img src="handbook_images/02_type_paste.png" alt="Type/Paste Interface">
+        <span class="caption">The Type/Paste input area with example items</span>
+    </div>
+
+    <ul class="step-list">
+        <li><span class="step-num">1</span> Click the <strong>Type / paste</strong> sub-tab</li>
+        <li><span class="step-num">2</span> Enter item names, one per line (e.g., "Cobalt Hydroxide 500g", "Laptop Acer Aspire 5")</li>
+        <li><span class="step-num">3</span> Click <strong>Read lines</strong> to process them</li>
+        <li><span class="step-num">4</span> The AI engine will classify each item automatically</li>
+    </ul>
+
+    <h3>Method B: Invoice File (OCR)</h3>
+    <p>Upload a purchase invoice PDF. The built-in OCR engine extracts line items automatically.</p>
+
+    <div class="screenshot-container">
+        <img src="handbook_images/03_invoice_ocr.png" alt="Invoice OCR Interface">
+        <span class="caption">OCR-parsed invoice lines ready for code generation</span>
+    </div>
+
+    <ul class="step-list">
+        <li><span class="step-num">1</span> Click the <strong>Invoice file</strong> sub-tab</li>
+        <li><span class="step-num">2</span> Upload a PDF invoice</li>
+        <li><span class="step-num">3</span> The OCR engine extracts item descriptions, quantities, HSN codes</li>
+        <li><span class="step-num">4</span> Click <strong>Resolve all</strong> to auto-classify every line</li>
+    </ul>
+
+    <h2 id="sec-2-2">2.2 Resolution Results</h2>
+    <p>After processing, each item shows a resolution card on the right panel:</p>
+
+    <div class="screenshot-container">
+        <img src="handbook_images/04_resolution_new.png" alt="Resolution Card">
+        <span class="caption">A NEW item auto-matched to Admin & Office > House Keeping Items</span>
+    </div>
+
+    <p>The resolution shows:</p>
+    <ul>
+        <li><strong>Phase 1 — Exists?</strong> checks if the item already exists</li>
+        <li><strong>Phase 2 — Taxonomy</strong> auto-classifies into Head > Sub-head > Group</li>
+        <li><strong>Phase 3 — Specs</strong> identifies specification slots</li>
+    </ul>
+
+    <h2 id="sec-2-3">2.3 Editing & Fine-Tuning</h2>
+    <p>If the AI classification needs adjustment, click the item to open the editing form:</p>
+
+    <div class="screenshot-container">
+        <img src="handbook_images/05_editing_form.png" alt="Editing Form">
+        <span class="caption">The editing form with Head, Sub-head, Group, and Spec dropdowns. The color-coded item code builds live at the bottom.</span>
+    </div>
+
+    <ul class="step-list">
+        <li><span class="step-num">1</span> Select the correct <strong>Head</strong> from the dropdown</li>
+        <li><span class="step-num">2</span> Select the correct <strong>Sub-head</strong></li>
+        <li><span class="step-num">3</span> Select or create a <strong>Group</strong></li>
+        <li><span class="step-num">4</span> Fill in <strong>Spec 1-4</strong> values from dropdowns (or type a new value)</li>
+        <li><span class="step-num">5</span> The 15-digit code builds live at the bottom, color-coded by segment</li>
+        <li><span class="step-num">6</span> Click <strong>Submit</strong> to mint the code</li>
+    </ul>
+
+    <div class="screenshot-container">
+        <img src="handbook_images/08_full_editing.png" alt="Full Editing Form">
+        <span class="caption">Complete editing form with Tax Template, HSN Code, and all specification fields</span>
+    </div>
+
+    <h2 id="sec-2-4">2.4 Tax Template & HSN Code</h2>
+    <p>When editing an item, you can also set:</p>
+    <ul>
+        <li><strong>Tax Template</strong> — GST rate (e.g., GST 18% - MC)</li>
+        <li><strong>HSN Code</strong> — Harmonized System code for the item</li>
+    </ul>
+
+    <div class="screenshot-container">
+        <img src="handbook_images/18_tax_hsn.png" alt="Tax and HSN Settings">
+        <span class="caption">Tax Template and HSN Code fields in the editing form</span>
+    </div>
+
+    <h2 id="sec-2-5">2.5 Creating a New Group</h2>
+    <p>If no existing group fits, create one inline:</p>
+
+    <div class="screenshot-container">
+        <img src="handbook_images/06_new_group_form.png" alt="New Group Form">
+        <span class="caption">Creating a new group with name, UoM, spec labels, and vendor label</span>
+    </div>
+
+    <ul class="step-list">
+        <li><span class="step-num">1</span> Select "Create a new group" option</li>
+        <li><span class="step-num">2</span> Enter the group name</li>
+        <li><span class="step-num">3</span> Set the Unit of Measurement</li>
+        <li><span class="step-num">4</span> Define spec label names (e.g., Type, Size, Chemistry)</li>
+        <li><span class="step-num">5</span> Click <strong>Apply</strong> to create and assign</li>
+    </ul>
+
+    <h2 id="sec-2-6">2.6 Success — Code Issued!</h2>
+    <p>Once submitted, you see a green confirmation:</p>
+
+    <div class="screenshot-container">
+        <img src="handbook_images/07_code_issued.png" alt="Code Issued Confirmation">
+        <span class="caption">Code successfully issued! The system also learns the wording for future auto-matching.</span>
+    </div>
+
+    <div class="callout tip">
+        <span class="callout-title">TIP</span>
+        The system learns from every code you create. Next time you type a similar item name, it will auto-match to the correct group!
+    </div>
+
+    <h2 id="sec-2-7">2.7 Handling Duplicates</h2>
+    <p>If an item already exists, the system warns you:</p>
+
+    <div class="screenshot-container">
+        <img src="handbook_images/16_two_results.png" alt="Duplicate Warning">
+        <span class="caption">Two items resolved: one already exists (100% match), one is new</span>
+    </div>
+
+    <div class="callout warning">
+        <span class="callout-title">WARNING</span>
+        Always check the 'already exists' warning before creating duplicate codes!
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- 3. ITEM MASTER -->
+    <h1 class="section-title" id="sec-3">3. ITEM MASTER (The Working Master)</h1>
+    <p>The central repository of ALL items — both locally generated and ERP-only.</p>
+
+    <h2 id="sec-3-1">3.1 Overview</h2>
+    
+    <div class="screenshot-container">
+        <img src="handbook_images/09_master_mixed.png" alt="Item Master Overview">
+        <span class="caption">Item Master showing a mix of confirmed, in ERPNext, and ERP-only items with Push to ERP button</span>
+    </div>
+
+    <p>The grid shows:</p>
+    <ul>
+        <li><strong>CODE</strong> — The 15-digit item code (or ERP code for ERP-only items)</li>
+        <li><strong>ITEM NAME</strong> — Description</li>
+        <li><strong>HEAD / SUB-HEAD</strong> — Taxonomy classification</li>
+        <li><strong>GROUP</strong> — Product group</li>
+        <li><strong>SPECIFICATIONS</strong> — Spec values (shown as slot numbers like 2·3·2)</li>
+        <li><strong>VENDOR</strong> — Supplier</li>
+        <li><strong>UOM</strong> — Unit of measurement</li>
+        <li><strong>HSN</strong> — HSN/SAC code</li>
+        <li><strong>STATUS</strong> — confirmed / in ERPNext / ERP only</li>
+        <li><strong>VER.</strong> — Version number</li>
+    </ul>
+
+    <h2 id="sec-3-2">3.2 Filtering & Searching</h2>
+    <p>Use the toolbar at the top:</p>
+    <ul>
+        <li><strong>Search box</strong> — Search by code, name, or description</li>
+        <li><strong>Head filter</strong> — Filter by Head category</li>
+        <li><strong>Sub-head filter</strong> — Filter by Sub-head</li>
+        <li><strong>Group filter</strong> — Filter by Group</li>
+        <li><strong>Status filter</strong> — Filter by status (confirmed, in ERPNext, ERP only)</li>
+    </ul>
+
+    <h2 id="sec-3-3">3.3 Editing an Item</h2>
+    <p>Click the <strong>edit</strong> button on any locally-created item to modify its details:</p>
+
+    <div class="screenshot-container">
+        <img src="handbook_images/11_master_edit.png" alt="Edit Modal">
+        <span class="caption">Edit modal for modifying item name, description, UoM, HSN, tax template, and status</span>
+    </div>
+
+    <h2 id="sec-3-4">3.4 ERP-Only Items</h2>
+    <p>Items created directly in ERPNext appear with an orange <span class="badge orange">ERP only</span> badge:</p>
+
+    <div class="screenshot-container">
+        <img src="handbook_images/10_master_erp.png" alt="ERP-only Items">
+        <span class="caption">ERP-only items from Admin & Office > House Keeping showing Buckets, Cleaning Brushes, etc.</span>
+    </div>
+    <p>These items exist in ERPNext but don't have a structured 15-digit code yet.</p>
+
+    <h2 id="sec-3-5">3.5 Classifying ERP-Only Items</h2>
+    <p>To bring an ERP-only item into your structured taxonomy:</p>
+
+    <div class="screenshot-container">
+        <img src="handbook_images/12_classify_modal.png" alt="Classify ERP Item Modal">
+        <span class="caption">Classify ERP Item modal — assigning Head, Sub-head, Group, and Specifications to ERP item AOHI0005</span>
+    </div>
+
+    <ul class="step-list">
+        <li><span class="step-num">1</span> Find the ERP-only item in the master grid</li>
+        <li><span class="step-num">2</span> Click the <strong>edit</strong> button on its row</li>
+        <li><span class="step-num">3</span> The <strong>Classify ERP Item</strong> modal opens</li>
+        <li><span class="step-num">4</span> Select the correct <strong>Head</strong> (e.g., Admin & Office)</li>
+        <li><span class="step-num">5</span> Select the correct <strong>Sub-head</strong> (e.g., House Keeping Items)</li>
+        <li><span class="step-num">6</span> Select the correct <strong>Group</strong> (e.g., Acid)</li>
+        <li><span class="step-num">7</span> Set <strong>Spec 1-4</strong> values from the dropdowns</li>
+        <li><span class="step-num">8</span> Click <strong>Update ERP Item</strong></li>
+    </ul>
+
+    <p>The item's metadata is updated directly in ERPNext without changing its original code.</p>
+
+    <div class="callout important">
+        <span class="callout-title">IMPORTANT</span>
+        This does NOT rename the item code. It only assigns structured metadata (Head, Sub-head, Group, Specs) to the existing ERP item.
+    </div>
+
+    <h2 id="sec-3-6">3.6 Pushing to ERPNext</h2>
+    <p>Items with status 'confirmed' can be pushed to ERPNext:</p>
+    <ul>
+        <li>Click the <strong>Push to ERP</strong> button on the item row</li>
+        <li>The item and its metadata are synced to your ERPNext instance</li>
+    </ul>
+
+    <h2 id="sec-3-7">3.7 Export to Excel</h2>
+    <p>Click the <strong>Export to Excel</strong> button in the top right to download the entire master as a spreadsheet.</p>
+
+    <div class="page-break"></div>
+
+    <!-- 4. DICTIONARY -->
+    <h1 class="section-title" id="sec-4">4. DICTIONARY (Taxonomy Manager)</h1>
+    <p>The Dictionary controls the DNA of your codes — all Heads, Sub-heads, Groups, and their specification slots.</p>
+
+    <h2 id="sec-4-1">4.1 Overview</h2>
+    
+    <div class="screenshot-container">
+        <img src="handbook_images/13_dictionary_detail.png" alt="Dictionary Details">
+        <span class="caption">Dictionary showing group detail for MOP (AOHK002) with spec slots, and action buttons</span>
+    </div>
+
+    <p>The left panel lists all groups with their prefix codes. Click any group to see its details on the right.</p>
+
+    <h2 id="sec-4-2">4.2 Group Details</h2>
+    <p>Each group shows:</p>
+    <ul>
+        <li><strong>Prefix code</strong> (e.g., AOHK002)</li>
+        <li><strong>Head / Sub-head</strong> path</li>
+        <li><strong>Spec slots</strong> (1-4) with their labels and defined values</li>
+        <li><strong>Action buttons</strong>: Rename, Edit Specs/Labels, Move, Merge, Retire</li>
+    </ul>
+
+    <h2 id="sec-4-3">4.3 Managing Groups</h2>
+    
+    <h3>Rename a Group</h3>
+    <p>Click <strong>Rename Group</strong> → Enter the new name → The old name becomes a search alias.</p>
+
+    <h3>Edit Specs & Labels</h3>
+    <p>Click <strong>Edit Specs/Labels</strong> → Modify spec slot names or add new specification values.</p>
+
+    <h3>Move a Group</h3>
+    <p>Click <strong>Move</strong> → Select a different Sub-head → Preview impact → Confirm.</p>
+    <div class="callout note">
+        <span class="callout-title">NOTE</span>
+        Moving a group recalculates all item codes under it. Active ERPNext items are never broken.
+    </div>
+
+    <h3>Merge Groups</h3>
+    <p>Click <strong>Merge</strong> → Select the target group → All items from the source move to the target.</p>
+
+    <h3>Retire a Group</h3>
+    <p>Click <strong>Retire</strong> → The group is deactivated and its 3-digit code is permanently parked.</p>
+    <div class="callout warning">
+        <span class="callout-title">WARNING</span>
+        Retired group codes are never reused to prevent confusion with historical records.
+    </div>
+
+    <h2 id="sec-4-4">4.4 Creating New Taxonomy</h2>
+    <p>Click <strong>New group</strong> to open the creation modal:</p>
+
+    <div class="screenshot-container">
+        <img src="handbook_images/14_new_group_modal.png" alt="New Group Modal">
+        <span class="caption">New hierarchy modal showing all available Head/Sub-head combinations</span>
+    </div>
+
+    <p>You can create:</p>
+    <ul>
+        <li>A new <strong>Group</strong> under an existing Sub-head</li>
+        <li>A new <strong>Sub-head & Group</strong> under an existing Head</li>
+        <li>A new <strong>Head, Sub-head & Group</strong> from scratch</li>
+    </ul>
+
+    <h2 id="sec-4-5">4.5 Sync from ERPNext ⭐ NEW</h2>
+    <p>If new Item Groups are created directly in ERPNext, use this feature to import them locally.</p>
+
+    <ul class="step-list">
+        <li><span class="step-num">1</span> Click <strong>Sync from ERPNext</strong> button (top right of Dictionary page)</li>
+        <li><span class="step-num">2</span> The system analyzes ERPNext and shows missing Heads, Sub-heads, and Groups</li>
+        <li><span class="step-num">3</span> Click <strong>Import</strong> next to any missing item</li>
+        <li><span class="step-num">4</span> The system auto-generates the 2-letter abbreviation code</li>
+        <li><span class="step-num">5</span> The taxonomy is now available in the generator!</li>
+    </ul>
+
+    <div class="callout important">
+        <span class="callout-title">IMPORTANT</span>
+        Always import parent Heads before their child Sub-heads, and Sub-heads before their Groups.
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- 5. DECODER -->
+    <h1 class="section-title" id="sec-5">5. DECODER</h1>
+    <p>Reverse-engineer any 15-digit item code to see what it means.</p>
+
+    <ul class="step-list">
+        <li><span class="step-num">1</span> Navigate to the <strong>Decoder</strong> tab</li>
+        <li><span class="step-num">2</span> Enter any valid item code (e.g., RMBS0010202010100)</li>
+        <li><span class="step-num">3</span> The system instantly breaks down every segment:
+            <ul>
+                <li>Head → Raw Materials</li>
+                <li>Sub-head → Battery Scrap</li>
+                <li>Group → Cobalt Hydroxide</li>
+                <li>Spec 1 → NMC (02)</li>
+                <li>Spec 2 → Cylindrical (02)</li>
+                <li>etc.</li>
+            </ul>
+        </li>
+    </ul>
+
+    <div class="callout tip">
+        <span class="callout-title">TIP</span>
+        Use the Decoder to verify codes before sharing them with suppliers or entering them in purchase orders.
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- 6. ACTIVITY LOG -->
+    <h1 class="section-title" id="sec-6">6. ACTIVITY LOG</h1>
+    <p>A complete audit trail of every action taken in the system.</p>
+
+    <p>What's logged:</p>
+    <ul>
+        <li>Item code creation (who, when, what)</li>
+        <li>Taxonomy changes (rename, move, merge, retire)</li>
+        <li>ERP sync events</li>
+        <li>Item edits and version history</li>
+    </ul>
+
+    <p>Click any event to see a <strong>visual diff</strong> showing exactly what changed (before vs. after).</p>
+
+    <div class="callout tip">
+        <span class="callout-title">TIP</span>
+        Use the Activity log to track who made changes and when. This is essential for audit compliance.
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- 7. SETTINGS -->
+    <h1 class="section-title" id="sec-7">7. SETTINGS</h1>
+    <p>Access Settings from the bottom of the sidebar.</p>
+
+    <p>Configurable options:</p>
+    <ul>
+        <li><strong>ERPNext URL</strong> — Your ERPNext instance URL</li>
+        <li><strong>API Key & Secret</strong> — Authentication credentials for ERPNext API</li>
+        <li><strong>LLM Provider</strong> — AI engine settings (OpenAI, etc.)</li>
+        <li><strong>Auto-push</strong> — Automatically push new codes to ERPNext</li>
+    </ul>
+
+    <div class="callout warning">
+        <span class="callout-title">WARNING</span>
+        Keep your API credentials secure. Only administrators should access the Settings page.
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- 8. QUICK REFERENCE -->
+    <h1 class="section-title" id="sec-8">8. QUICK REFERENCE</h1>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Task</th>
+                <th>Where</th>
+                <th>Steps</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Create a new item code</td>
+                <td>Create Codes → Type/Paste</td>
+                <td>Enter name → Resolve → Edit specs → Submit</td>
+            </tr>
+            <tr>
+                <td>Import from invoice</td>
+                <td>Create Codes → Invoice File</td>
+                <td>Upload PDF → Resolve All → Review → Submit</td>
+            </tr>
+            <tr>
+                <td>Edit existing item</td>
+                <td>Item Master → edit button</td>
+                <td>Modify fields → Save</td>
+            </tr>
+            <tr>
+                <td>Classify ERP item</td>
+                <td>Item Master → edit (ERP only)</td>
+                <td>Set Head/Sub/Group/Specs → Update</td>
+            </tr>
+            <tr>
+                <td>Push to ERPNext</td>
+                <td>Item Master → Push to ERP</td>
+                <td>Click button → Confirm</td>
+            </tr>
+            <tr>
+                <td>Add new group</td>
+                <td>Dictionary → New group</td>
+                <td>Set hierarchy → Define specs → Create</td>
+            </tr>
+            <tr>
+                <td>Sync ERP taxonomy</td>
+                <td>Dictionary → Sync from ERPNext</td>
+                <td>Review missing → Import → Done</td>
+            </tr>
+            <tr>
+                <td>Decode a code</td>
+                <td>Decoder</td>
+                <td>Enter code → View breakdown</td>
+            </tr>
+            <tr>
+                <td>View audit trail</td>
+                <td>Activity</td>
+                <td>Browse events → Click for diff</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- FOOTER -->
+    <div class="footer">
+        Minimines Cleantech Pvt. Ltd. | Item Code Studio v2.0 | Internal Use Only
+    </div>
+
+</div>
+
+</body>
+</html>
