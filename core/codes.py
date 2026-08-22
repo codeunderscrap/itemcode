@@ -34,10 +34,11 @@ def assemble(head2, sub2, grp3, slots, vendor=None):
     slots = list(slots or [])
     slots += [None] * (4 - len(slots))
     tail = slots[:4] + [vendor]
-    last = -1
-    for i, v in enumerate(tail):
-        if v not in (None, ""):
-            last = i
+    
+    # Always pad out to at least the 4 specs (index 3). 
+    # If there is a vendor, we pad out to index 4.
+    last = 3 if vendor in (None, "") else 4
+    
     out = f"{head2}{sub2}{grp3}"
     for i in range(last + 1):
         v = tail[i]
