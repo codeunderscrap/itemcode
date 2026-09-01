@@ -56,6 +56,16 @@
         <button type="submit" id="loginBtn">Sign in</button>
       </fieldset>
     </form>
+    <div id="mmosPane" class="hide">
+      <div style="display:flex;align-items:center;gap:10px;margin:18px 0;color:var(--mm-dim);font-size:12px">
+        <div style="flex:1;height:1px;background:var(--mm-border)"></div>OR<div style="flex:1;height:1px;background:var(--mm-border)"></div>
+      </div>
+      <a id="mmosLink" href="#" style="display:block;text-align:center;text-decoration:none;
+         font-weight:600;border:1px solid var(--mm-border);border-radius:7px;padding:10px 14px;
+         color:var(--mm-text);background:var(--mm-navy)">Sign in with MM OS</a>
+      <p style="margin:8px 0 0;font-size:11.5px;color:var(--mm-dim);text-align:center">
+        Opens MM OS — launch Item Code Studio from your tiles there.</p>
+    </div>
   </div>
 
   <div id="changePane" class="hide">
@@ -104,6 +114,19 @@ async function api(path, opts = {}) {
   if (me.ok && me.user) {
     if (me.must_change_password) { showChange(); }
     else { location.href = '/index.html'; }
+  }
+})();
+
+// "Sign in with MM OS" — additive, opt-in (MMOS-RETROFIT.md). Hidden unless
+// the server reports MM OS is actually configured, so an unconfigured
+// deployment shows nothing new at all. The link goes to MM OS itself: the
+// token is minted there, on tile launch, and lands back here at
+// /_mmos/accept — this page never mints or sees a token itself.
+(async () => {
+  const h = await api('/api/v1/mmos/health');
+  if (h.ok && h.configured && h.os_url) {
+    $('#mmosLink').href = h.os_url;
+    $('#mmosPane').classList.remove('hide');
   }
 })();
 

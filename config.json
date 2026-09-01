@@ -44,6 +44,16 @@
     "local_url": "",
     "lease_size": 10
   },
+  "mmos": {
+    "_comment": "MM OS single sign-on — additive, opt-in (MMOS-RETROFIT.md). enabled=true wires the second, MM-OS-minted way to obtain a session ALONGSIDE the native username/password login, which is untouched. The service key is a secret and is never read from here — set the MMOS_SERVICE_KEY environment variable instead, same convention as ATT Platform's integration. slug/os_url are safe to keep in config.",
+    "enabled": true,
+    "slug": "itemcode",
+    "os_url": "http://hrxd6lgu3h7qpnkbpy2mqgdc.200.234.36.153.sslip.io",
+    "issuer": "http://hrxd6lgu3h7qpnkbpy2mqgdc.200.234.36.153.sslip.io",
+    "poll_after_seconds": 60,
+    "clock_skew_seconds": 60,
+    "heartbeat_seconds": 300
+  },
   "backup": {
     "_comment": "path is a folder Google Drive for Desktop already syncs on the tier-2 machine - set by Anuraag, no credentials involved (agents/AGENT_H_DEPLOY.md task 7)",
     "drive_folder": "",

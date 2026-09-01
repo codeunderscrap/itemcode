@@ -38,12 +38,35 @@ MATCHER = Matcher(CFG.get("llm"), CFG.get("match_threshold", 60))
 ERPC = ERP(CFG.get("erpnext", {})).refresh(CON)
 ctx.init(ROOT, CFG, CON, MATCHER, ERPC)
 
+# mmos-retrofit: additive, constructed AFTER ctx.init() rather than folded
+# into it, so ctx.init()'s signature (and every existing caller of it) is
+# untouched. ctx.mmos defaults to None (core/context.py); MMOSClient.configured
+# is False whenever config.json's "mmos.enabled" is false or slug/os_url are
+# missing - routes/mmos.py treats "not configured" as "refuse every MM OS
+# request", never as "grant one". The service key is read ONLY from the
+# MMOS_SERVICE_KEY environment variable, never from config.json. See
+# MMOS-RETROFIT.md for the full posture and how to turn this on.
+from core.mmos_client import MMOSClient                       # noqa: E402
+_MMOS_CFG = CFG.get("mmos", {})
+ctx.mmos = MMOSClient(
+    enabled=_MMOS_CFG.get("enabled", False),
+    slug=_MMOS_CFG.get("slug", "itemcode"),
+    os_url=_MMOS_CFG.get("os_url", ""),
+    service_key=os.environ.get("MMOS_SERVICE_KEY", ""),
+    issuer=_MMOS_CFG.get("issuer") or None,
+    version=CFG.get("app_version", "1.0.0"),
+    poll_after_seconds=_MMOS_CFG.get("poll_after_seconds", 60),
+    clock_skew_seconds=_MMOS_CFG.get("clock_skew_seconds", 60),
+    heartbeat_seconds=_MMOS_CFG.get("heartbeat_seconds", 300),
+)
+ctx.mmos.start_background()
+
 # Imported after ctx.init() so route modules - which read core.context.ctx at
 # call time, not at import time - always see a ready context. This is also
 # why no route module may import server.py: it would be circular.
-from routes import public, auth, create, master, erp as erp_routes, meta  # noqa: E402
+from routes import public, auth, create, master, erp as erp_routes, meta, mmos  # noqa: E402
 
-ROUTER = Router((public, auth, create, master, erp_routes, meta))
+ROUTER = Router((public, auth, create, master, erp_routes, meta, mmos))
 Handler = make_handler(WEB, ROUTER)
 
 

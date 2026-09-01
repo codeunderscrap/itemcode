@@ -19,6 +19,8 @@ server.log
 tests/_concurrent_test.db*
 
 # Local machine / editor
+.venv/
+venv/
 .vscode/
 .idea/
 *.swp

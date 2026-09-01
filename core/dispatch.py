@@ -156,11 +156,23 @@ def make_handler(web_dir, router):
             path = unquote(u.path)
             query = {k: v[0] for k, v in parse_qs(u.query).items()}
 
-            if method == "GET" and not path.startswith("/api/"):
-                return self._static(path)
-
+            # mmos-retrofit: try the route table FIRST for GET too, then fall
+            # back to static-file serving. Previously any GET outside /api/
+            # went straight to _static() without ever consulting the router -
+            # fine while every registered GET route lived under /api/, which
+            # was every one of them until routes/mmos.py's "/_mmos/accept".
+            # MM OS's own launch_url is hardcoded to that exact literal path
+            # (MM OS repo backend/app/routers/tokens.py) so it cannot be
+            # registered under /api/ instead - this is the minimal change that
+            # lets one non-/api/ GET route exist without touching how any other
+            # path is served. Every existing GET route is still under /api/ and
+            # still matches exactly as before; every other non-/api/ GET still
+            # has no router entry, so it falls through to _static() exactly as
+            # before - behaviour is unchanged except for this one new path.
             handler, params = router.match(method, path)
             if handler is None:
+                if method == "GET" and not path.startswith("/api/"):
+                    return self._static(path)
                 return self._send(404, err("NOT_FOUND", "unknown endpoint"))
 
             fields, files, body = {}, {}, {}
