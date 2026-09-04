@@ -76,7 +76,7 @@ class MMOSClient:
         if self.configured:
             self._session = _BaseUrlSession(self.os_url)
             self._jwks = JWKSCache(
-                f"{self.os_url}/.well-known/jwks.json",
+                "/.well-known/jwks.json",
                 session=self._session,
                 min_refresh_seconds=jwks_min_refresh_seconds,
             )
