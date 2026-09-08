@@ -522,7 +522,15 @@ class ERP:
             d = self._resource("POST", "Item", payload=payload)
             return {"ok": True, "dry_run": False, "name": (d.get("data") or {}).get("name"), "at": D.now()}
         except Exception as e:                                        # noqa: BLE001
-            return {"ok": False, "error": f"{e.__class__.__name__}: {e}", "payload": payload}
+            if getattr(e, 'code', None) == 409:
+                return {"ok": False, "error": "This item code already exists in ERPNext. Please click 'Sync from ERPNext' to update your local status.", "payload": payload}
+            err_msg = f"{e.__class__.__name__}: {e}"
+            if hasattr(e, 'read'):
+                try:
+                    err_msg += " - " + e.read().decode('utf-8')
+                except:
+                    pass
+            return {"ok": False, "error": err_msg, "payload": payload}
 
     def update_item(self, code, fields, con=None):
         """Update the small fixed set of fields ERPNEXT_API.md §5.3.4
@@ -562,7 +570,15 @@ class ERP:
             d = self._resource("PUT", "Item", name=code, payload=payload)
             return {"ok": True, "dry_run": False, "name": (d.get("data") or {}).get("name"), "at": D.now()}
         except Exception as e:                                        # noqa: BLE001
-            return {"ok": False, "error": f"{e.__class__.__name__}: {e}", "payload": payload}
+            if getattr(e, 'code', None) == 409:
+                return {"ok": False, "error": "This item code already exists in ERPNext. Please click 'Sync from ERPNext' to update your local status.", "payload": payload}
+            err_msg = f"{e.__class__.__name__}: {e}"
+            if hasattr(e, 'read'):
+                try:
+                    err_msg += " - " + e.read().decode('utf-8')
+                except:
+                    pass
+            return {"ok": False, "error": err_msg, "payload": payload}
 
     def rename_item(self, old, new, con=None):
         """Rename an Item that has never been transacted (ERPNEXT_API.md
