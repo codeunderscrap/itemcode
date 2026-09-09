@@ -454,10 +454,6 @@ def item_push_v1(req):
                               it.get("hsn"), extra=extra, tax_template=it.get("tax"), con=con)
                           
     if not res.get("ok"):
-        if "already exists" in str(res.get("error", "")):
-            con.execute("UPDATE item SET status='in_erp', erp_synced_at=?, frozen=1 WHERE id=?", (now(), it["id"]))
-            con.commit()
-            return ok({"code": code, "status": "in_erp", "erp_res": res})
         raise ApiError("FAILED", f"ERPNext push failed: {res.get('error', 'unknown error')}")
         
     con.execute("UPDATE item SET status='in_erp', erp_synced_at=?, frozen=1 WHERE id=?",

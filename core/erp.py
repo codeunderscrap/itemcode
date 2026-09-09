@@ -376,7 +376,13 @@ class ERP:
                     }
                     if abbr:
                         payload["item_group_abbreviation"] = abbr
-                    self._resource("POST", "Item Group", payload=payload)
+                    try:
+                        self._resource("POST", "Item Group", payload=payload)
+                    except Exception as e:
+                        if getattr(e, "code", None) == 409:
+                            pass # already exists
+                        else:
+                            raise
                 self._group_cache = (None, 0.0)
 
         self.login()
@@ -522,8 +528,7 @@ class ERP:
             d = self._resource("POST", "Item", payload=payload)
             return {"ok": True, "dry_run": False, "name": (d.get("data") or {}).get("name"), "at": D.now()}
         except Exception as e:                                        # noqa: BLE001
-            if getattr(e, 'code', None) == 409:
-                return {"ok": False, "error": "This item code already exists in ERPNext. Please click 'Sync from ERPNext' to update your local status.", "payload": payload}
+
             err_msg = f"{e.__class__.__name__}: {e}"
             if hasattr(e, 'read'):
                 try:
@@ -570,8 +575,7 @@ class ERP:
             d = self._resource("PUT", "Item", name=code, payload=payload)
             return {"ok": True, "dry_run": False, "name": (d.get("data") or {}).get("name"), "at": D.now()}
         except Exception as e:                                        # noqa: BLE001
-            if getattr(e, 'code', None) == 409:
-                return {"ok": False, "error": "This item code already exists in ERPNext. Please click 'Sync from ERPNext' to update your local status.", "payload": payload}
+
             err_msg = f"{e.__class__.__name__}: {e}"
             if hasattr(e, 'read'):
                 try:
