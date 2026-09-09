@@ -378,11 +378,17 @@ class ERP:
                         payload["item_group_abbreviation"] = abbr
                     try:
                         self._resource("POST", "Item Group", payload=payload)
-                    except Exception as e:
+                    except urllib.error.HTTPError as e:
                         if getattr(e, "code", None) == 409:
                             pass # already exists
                         else:
-                            raise
+                            try:
+                                msg = e.read().decode("utf-8")
+                            except:
+                                msg = str(e)
+                            print(f"Warning: Failed to auto-create Item Group {name}: {msg}")
+                    except Exception as e:
+                        print(f"Warning: Failed to auto-create Item Group {name}: {e}")
                 self._group_cache = (None, 0.0)
 
         self.login()
@@ -527,8 +533,9 @@ class ERP:
             self.login()
             d = self._resource("POST", "Item", payload=payload)
             return {"ok": True, "dry_run": False, "name": (d.get("data") or {}).get("name"), "at": D.now()}
-        except Exception as e:                                        # noqa: BLE001
-
+        except urllib.error.HTTPError as e:
+            if getattr(e, "code", None) == 409:
+                return {"ok": False, "error": f"Item code '{code}' already exists in ERPNext.", "payload": payload}
             err_msg = f"{e.__class__.__name__}: {e}"
             if hasattr(e, 'read'):
                 try:
@@ -536,6 +543,8 @@ class ERP:
                 except:
                     pass
             return {"ok": False, "error": err_msg, "payload": payload}
+        except Exception as e:
+            return {"ok": False, "error": str(e), "payload": payload}
 
     def update_item(self, code, fields, con=None):
         """Update the small fixed set of fields ERPNEXT_API.md §5.3.4
