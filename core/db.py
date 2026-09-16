@@ -134,6 +134,9 @@ def connect(path=None):
 
 def init(con):
     con.executescript(SCHEMA)
+    for t in ('head', 'subhead', 'grp'):
+        try: con.execute(f"ALTER TABLE {t} ADD COLUMN description TEXT DEFAULT ''")
+        except: pass
     con.commit()
 
 
