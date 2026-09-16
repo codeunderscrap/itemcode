@@ -508,6 +508,7 @@
           ? `<div class="codebar" style="margin-top:12px; border-top:1px solid var(--mm-b0,#262f3d); padding-top:12px;">
               <span class="muted" style="font-size:13px; color:var(--tx3,#687986);">Not synced to ERPNext yet.</span>
               <span class="grow"></span>
+              <button class="ghost sm" data-act="delete-card" data-i="${c.i}" style="color:var(--warn)">Delete</button>
               <button class="primary sm" data-act="push-card" data-i="${c.i}" ${c.pushing ? "disabled" : ""}>
                 ${c.pushing ? "Pushing..." : "Push to ERP"}
               </button>
@@ -901,7 +902,20 @@
         return;
       }
       if (act === "view-group-items") { await showGroupItemsModal(c); return; }
-      if (act === "push-card") { await pushCardToErp(c); return; }
+      
+      if (act === "delete-card") {
+        if (!confirm(`Delete ${c.submittedCode}?`)) return;
+        try {
+          await postJSON(`/api/v1/item/${c.submittedCode}/delete`, {});
+          c.submitted = false; c.pushedToErp = false; c.submittedCode = null;
+          c.status = "done";
+          c.editing = false;
+          updateCard(c);
+          toast("Deleted", "ok");
+        } catch(e) { toast(e.message, "err"); }
+        return;
+      }
+if (act === "push-card") { await pushCardToErp(c); return; }
 
       if (act === "apply-newgroup") {
         const card = document.querySelector(`.card[data-i="${i}"]`);

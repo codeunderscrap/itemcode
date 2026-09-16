@@ -135,7 +135,7 @@ async function loadMaster() {
     <td><span class="pill ${r.status === 'in_erp' ? 'erp' : ''}">${r.status === 'in_erp' ? 'in ERPNext' : esc(r.status)}</span>
       ${r.decodable ? '' : '<span class="pill dr">stale code</span>'}</td>
     <td class="num muted">${r.version_no || 1}</td>
-    <td><button class="ghost sm" data-edit="${esc(r.code)}">edit</button>
+    <td><button class="ghost sm" data-delete="${esc(r.code)}" style="color:var(--warn); margin-right:4px">delete</button><button class="ghost sm" data-edit="${esc(r.code)}">edit</button>
         ${r.status === 'confirmed' ? `<button class="primary sm" style="margin-left:4px" data-push="${esc(r.code)}">Push to ERP</button>` : ''}</td></tr>`);
 
   const erpRows = erpOnly.map(renderErpOnlyRow);

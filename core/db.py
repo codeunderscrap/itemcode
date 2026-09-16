@@ -15,14 +15,15 @@ SCHEMA = """
 PRAGMA journal_mode=WAL;
 
 CREATE TABLE IF NOT EXISTS head(
-  id INTEGER PRIMARY KEY, name TEXT UNIQUE, code2 TEXT UNIQUE, active INT DEFAULT 1);
+  id INTEGER PRIMARY KEY, name TEXT UNIQUE, code2 TEXT UNIQUE, description TEXT DEFAULT '', active INT DEFAULT 1);
 
 CREATE TABLE IF NOT EXISTS subhead(
-  id INTEGER PRIMARY KEY, head_id INT, name TEXT, code2 TEXT, active INT DEFAULT 1,
+  id INTEGER PRIMARY KEY, head_id INT, name TEXT, code2 TEXT, description TEXT DEFAULT '', active INT DEFAULT 1,
   UNIQUE(head_id, name));
 
 CREATE TABLE IF NOT EXISTS grp(
   id INTEGER PRIMARY KEY, subhead_id INT, name TEXT, code3 TEXT, uom TEXT,
+    description TEXT DEFAULT '',
   labels TEXT DEFAULT '{}', status TEXT DEFAULT 'active',
   UNIQUE(subhead_id, name));
 

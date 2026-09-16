@@ -191,6 +191,9 @@ def _candidate_groups(con, matcher, text, hints, limit=7, hsn=None):
     overriding the machine outright - it collapses the shortlist to that one
     choice and nothing else is asked about it."""
     hints = hints or {}
+    if hints.get("new_group_name"):
+        return []
+        
     groups = load_groups(con)
     if hints.get("group_id"):
         g = next((x for x in groups if x["id"] == int(hints["group_id"])), None)
@@ -623,14 +626,17 @@ def _assemble_result(con, matcher, lc, decision):
         head2 = head["code2"] if head else "??"
         sub2 = sub["code2"] if sub else "??"
         grp3, new_group = "???", True
-        if not sub:
+        if not sub and not hints.get("new_subhead_name"):
             out["blockers"].append(
                 "Nothing close enough to suggest a home - pick the head and sub-head.")
-        else:
+        elif sub:
             # C.next_group_code dropped (group_name, matcher) - numbering is
             # queue-claim, lowest-first now, no semantic test (CONTRACTS §4).
             grp3, reused = C.next_group_code(con, sub["id"])
             out["group_number_reused_from"] = reused
+        else:
+            # New subhead means first group will be 001
+            grp3, reused = "001", None
         if not hints.get("new_group_name"):
             out["blockers"].append("Name the new item group and confirm where it belongs.")
 
@@ -663,21 +669,20 @@ def _assemble_result(con, matcher, lc, decision):
 
     out["new_spec_values"] = pending_new
     out["new_group"] = new_group
-    if "?" not in (head2 + sub2 + grp3):
-        if group and not new_group:
-            pos = C.next_item_position(con, group["id"], slots)
-            final_slots = [pos[i:i+2] for i in range(0, 8, 2)]
-            code = C.assemble(head2, sub2, grp3, final_slots, vend)
-        else:
-            code = C.assemble(head2, sub2, grp3, slots, vend)
-            
-        out["code"] = code
-        out["action"] = "create"
-        out["segments"] = {"head": head2, "sub": sub2, "group": grp3, "specs": final_slots if (group and not new_group) else slots, "vendor": vend}
-        if not C.code_is_free(con, code):
-            out["blockers"].append(
-                f"{code} is already issued - the spec combination is not unique. "
-                "Adjust a spec value or pick the existing item.")
+    if group and not new_group:
+        pos = C.next_item_position(con, group["id"], slots)
+        final_slots = [pos[i:i+2] for i in range(0, 8, 2)]
+        code = C.assemble(head2, sub2, grp3, final_slots, vend)
+    else:
+        code = C.assemble(head2, sub2, grp3, slots, vend)
+        
+    out["code"] = code
+    out["action"] = "create"
+    out["segments"] = {"head": head2, "sub": sub2, "group": grp3, "specs": final_slots if (group and not new_group) else slots, "vendor": vend}
+    if not C.code_is_free(con, code) and "?" not in code:
+        out["blockers"].append(
+            f"{code} is already issued - the spec combination is not unique. "
+            "Adjust a spec value or pick the existing item.")
     return out
 
 

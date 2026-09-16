@@ -45,7 +45,7 @@ from . import db as D
 # The only (HTTP method, doctype) pairs this module will ever address.
 # agents/AGENT_G_ERPNEXT.md task 1 / agents/CONTRACTS.md §8.
 ALLOWED = {
-    ("GET", "Item"), ("POST", "Item"), ("PUT", "Item"),
+    ("GET", "Item"), ("POST", "Item"), ("PUT", "Item"), ("DELETE", "Item"),
     ("GET", "Item Code Specification"), ("POST", "Item Code Specification"),
     ("GET", "Item Code Vendor"), ("POST", "Item Code Vendor"),
     ("GET", "Item Group"), ("POST", "Item Group"), ("GET", "UOM"), ("GET", "GST HSN Code"),
@@ -592,6 +592,21 @@ class ERP:
                 except:
                     pass
             return {"ok": False, "error": err_msg, "payload": payload}
+
+    def delete_item(self, code, con=None):
+        """Hard delete an item from ERPNext."""
+        self.refresh(con)
+        if not self.enabled:
+            return {"ok": False, "skipped": True, "reason": "ERPNext disabled"}
+        try:
+            self._refuse_provisional(code, {}, con)
+            self.login()
+            if self.dry_run:
+                return {"ok": True, "dry_run": True}
+            res = self._resource("DELETE", "Item", name=code)
+            return {"ok": True, "raw": res}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
 
     def rename_item(self, old, new, con=None):
         """Rename an Item that has never been transacted (ERPNEXT_API.md

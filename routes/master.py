@@ -395,6 +395,41 @@ def item_update_v1(req):
                "note": "field edits never change the code"})
 
 
+
+def item_delete_v1(req):
+    """POST /api/v1/item/<code>/delete - Hard delete local and (if pushed) ERPNext."""
+    from core.erp import ERP
+    from core.db import log
+    from core import db as D
+    
+    user = require_session(req)
+    code = (req.params.get("code") or "").upper()
+    con = ctx.con
+    it = D.one(con, "SELECT * FROM item WHERE code=?", (code,))
+    if not it:
+        raise ApiError("NOT_FOUND", f"no item with code {code}")
+    
+    if it["status"] in ("in_erp", "erp_frozen"):
+        erp = ERP().refresh(con)
+        if not erp.enabled:
+            raise ApiError("FAILED", "ERPNext integration disabled - cannot delete pushed item")
+        res = erp.delete_item(code, con)
+        if not res.get("ok"):
+            # If Frappe rejects the deletion, pass the error string to the user
+            raise ApiError("FAILED", f"ERPNext refused deletion: {res.get('error', 'unknown error')}")
+            
+    # Success or it was never pushed - delete from SQLite
+    con.execute("DELETE FROM item WHERE code=?", (code,))
+    # Remove any position lease just in case
+    import core.codes as C
+    try:
+        con.execute("DELETE FROM lease WHERE scope=? AND number=?", (f"item:{it['grp_id']}", C._item_position_of(con, it)))
+    except Exception:
+        pass
+    log(con, user, "delete-item", code, {"name": it["name"]})
+    con.commit()
+    return ok({"deleted": code})
+
 def item_push_v1(req):
     """POST /api/v1/item/<code>/push — manual push to ERPNext."""
     from core.erp import ERP
@@ -867,6 +902,7 @@ ROUTES = [
     ("GET", "/api/v1/item", item_list_v1),
     ("GET", "/api/v1/item/<code>", item_detail_v1),
     ("POST", "/api/v1/item/<code>/update", item_update_v1),
+    ("POST", "/api/v1/item/<code>/delete", item_delete_v1),
     ("POST", "/api/v1/item/<code>/push", item_push_v1),
     ("GET", "/api/v1/versions", versions_v1),
     ("POST", "/api/v1/revert", revert_v1),
