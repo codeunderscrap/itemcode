@@ -188,7 +188,9 @@ def resolve_preview(req):
         vend = sv["code2"]
         vend_detail = {"label": vlabel, "code": vend, "value": sv["value"]}
 
-    code = C.assemble(g["head_code"], g["sub_code"], g["code3"], slots, vend)
+    pos = C.next_item_position(con, g["id"], slots)
+    final_slots = [pos[i:i+2] for i in range(0, 8, 2)]
+    code = C.assemble(g["head_code"], g["sub_code"], g["code3"], final_slots, vend)
     free = C.code_is_free(con, code)
     conflict_detail = None
     if not free:
@@ -204,7 +206,7 @@ def resolve_preview(req):
         # same shape as resolve()'s out["segments"], so the client's one
         # code-bar renderer works for both a matched proposal and a manual edit
         "segments": {"head": g["head_code"], "sub": g["sub_code"], "group": g["code3"],
-                     "specs": slots, "vendor": vend},
+                     "specs": final_slots, "vendor": vend},
     })
 
 

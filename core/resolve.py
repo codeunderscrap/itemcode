@@ -664,10 +664,16 @@ def _assemble_result(con, matcher, lc, decision):
     out["new_spec_values"] = pending_new
     out["new_group"] = new_group
     if "?" not in (head2 + sub2 + grp3):
-        code = C.assemble(head2, sub2, grp3, slots, vend)
+        if group and not new_group:
+            pos = C.next_item_position(con, group["id"], slots)
+            final_slots = [pos[i:i+2] for i in range(0, 8, 2)]
+            code = C.assemble(head2, sub2, grp3, final_slots, vend)
+        else:
+            code = C.assemble(head2, sub2, grp3, slots, vend)
+            
         out["code"] = code
         out["action"] = "create"
-        out["segments"] = {"head": head2, "sub": sub2, "group": grp3, "specs": slots, "vendor": vend}
+        out["segments"] = {"head": head2, "sub": sub2, "group": grp3, "specs": final_slots if (group and not new_group) else slots, "vendor": vend}
         if not C.code_is_free(con, code):
             out["blockers"].append(
                 f"{code} is already issued - the spec combination is not unique. "
@@ -833,7 +839,9 @@ def commit(con, matcher, proposal, user, push_erp=False, erp=None):
             log(con, user, "create-vendor", v["value"],
                 {"group": group["name"], "code": vend_code})
 
-    code = C.assemble(group["head_code"], group["sub_code"], group["code3"], slot_codes, vend_code)
+    pos = C.next_item_position(con, group["id"], slot_codes)
+    final_slot_codes = [pos[i:i+2] for i in range(0, 8, 2)]
+    code = C.assemble(group["head_code"], group["sub_code"], group["code3"], final_slot_codes, vend_code)
     if not C.code_is_free(con, code):
         raise ValueError(f"{code} already exists - refusing to overwrite")
 

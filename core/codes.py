@@ -37,7 +37,7 @@ def assemble(head2, sub2, grp3, slots, vendor=None):
     
     last = -1
     for i, v in enumerate(tail):
-        if v not in (None, ""):
+        if v not in (None, "", "00"):
             last = i
             
     out = f"{head2}{sub2}{grp3}"
