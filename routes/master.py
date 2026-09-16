@@ -257,7 +257,8 @@ def head_add(req):
     con = ctx.con
     name = p["name"].strip()
     code = C.mint_head_code(con, name)
-    cur = con.execute("INSERT INTO head(name,code2) VALUES(?,?)", (name, code))
+    desc = (p.get("description") or "").strip()
+    cur = con.execute("INSERT INTO head(name,code2,description) VALUES(?,?,?)", (name, code, desc))
     D.log(con, user, "create-head", name, {"code2": code})
     con.commit()
     return {"ok": True, "id": cur.lastrowid, "code2": code}
@@ -269,7 +270,8 @@ def subhead_add(req):
     con = ctx.con
     hid, name = int(p["head_id"]), p["name"].strip()
     code = C.mint_subhead_code(con, hid, name)
-    cur = con.execute("INSERT INTO subhead(head_id,name,code2) VALUES(?,?,?)", (hid, name, code))
+    desc = (p.get("description") or "").strip()
+    cur = con.execute("INSERT INTO subhead(head_id,name,code2,description) VALUES(?,?,?,?)", (hid, name, code, desc))
     D.log(con, user, "create-subhead", name, {"code2": code, "head_id": hid})
     con.commit()
     return {"ok": True, "id": cur.lastrowid, "code2": code}

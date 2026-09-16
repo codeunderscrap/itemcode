@@ -62,6 +62,12 @@ CREATE TABLE IF NOT EXISTS code_mapping(
   id INTEGER PRIMARY KEY, old_code TEXT, new_code TEXT, reason TEXT,
   user TEXT, ts TEXT, pushed_to_erp INT DEFAULT 0);
 
+
+CREATE TABLE IF NOT EXISTS catalog(
+  id INTEGER PRIMARY KEY, name TEXT UNIQUE, location TEXT);
+CREATE TABLE IF NOT EXISTS catalog_group(
+  catalog_id INT, grp_id INT, UNIQUE(catalog_id, grp_id));
+
 CREATE TABLE IF NOT EXISTS audit(
   id INTEGER PRIMARY KEY, ts TEXT, user TEXT, action TEXT, target TEXT, detail TEXT);
 

@@ -47,9 +47,9 @@ SLOTS = (1, 2, 3, 4)
 # --------------------------------------------------------------- dictionary
 def load_groups(con):
     rows = con.execute("""
-        SELECT g.id, g.name, g.code3, g.uom, g.labels, g.status,
-               s.id AS sub_id, s.name AS sub_name, s.code2 AS sub_code,
-               h.id AS head_id, h.name AS head_name, h.code2 AS head_code
+        SELECT g.id, g.name, g.code3, g.uom, g.labels, g.status, g.description AS g_desc,
+               s.id AS sub_id, s.name AS sub_name, s.code2 AS sub_code, s.description AS s_desc,
+               h.id AS head_id, h.name AS head_name, h.code2 AS head_code, h.description AS h_desc
         FROM grp g JOIN subhead s ON s.id=g.subhead_id JOIN head h ON h.id=s.head_id
         WHERE g.status='active'""").fetchall()
     out = []
@@ -380,7 +380,12 @@ def _format_candidates(candidates):
     for gi, c in enumerate(candidates):
         g = c["group"]
         hn, sn = g.get("head_name", ""), g.get("sub_name", "")
-        lines.append(f'    group[{gi}] "{g["name"]}" under "{hn} > {sn}" (rule score {c["score"]})')
+        desc = ""
+        if g.get("h_desc"): desc += f" Head: {g['h_desc']} |"
+        if g.get("s_desc"): desc += f" Subhead: {g['s_desc']} |"
+        if g.get("g_desc"): desc += f" Group: {g['g_desc']}"
+        desc_str = f" - Context:{desc}" if desc else ""
+        lines.append(f'    group[{gi}] "{g["name"]}" under "{hn} > {sn}" (rule score {c["score"]}){desc_str}')
         for so in c["slots"]:
             if so.get("forced_idx") is not None:
                 continue                                # operator already fixed this one
