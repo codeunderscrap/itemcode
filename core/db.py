@@ -116,17 +116,9 @@ def now():
 
 
 def connect(path=None):
-    """Open the ledger database directly.
-
-    Valid only for `ledger.mode` "server" or "local_server" (CONTRACTS.md
-    §2) - both open SQLite in-process, which is what this does. "client"
-    mode proxies over HTTPS instead of opening a file at all; Agent H owns
-    that resolution and the three-tier failover on top of it. This function
-    only promises: given a path (or the default), hand back a working
-    connection. Never point it at a network share - SQLite locking over SMB
-    is unreliable and concurrent writers corrupt the file.
-    """
-    con = sqlite3.connect(path or DB_PATH, timeout=30, check_same_thread=False)
+    p = path or DB_PATH
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    con = sqlite3.connect(p, timeout=30, check_same_thread=False)
     con.row_factory = sqlite3.Row
     con.execute("PRAGMA foreign_keys=ON")
     return con
@@ -134,7 +126,7 @@ def connect(path=None):
 
 def init(con):
     con.executescript(SCHEMA)
-    for t in ('head', 'subhead', 'grp'):
+    for t in ('head', 'subhead', 'grp', 'item'):
         try: con.execute(f"ALTER TABLE {t} ADD COLUMN description TEXT DEFAULT ''")
         except: pass
     con.commit()

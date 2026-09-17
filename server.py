@@ -82,8 +82,8 @@ def lan_ip():
 
 
 def main():
-    host = CFG.get("host", "0.0.0.0")
-    port = int(CFG.get("port", 8756))
+    host = os.environ.get("HOST") or CFG.get("host", "0.0.0.0")
+    port = int(os.environ.get("PORT") or CFG.get("port", 8756))
     srv = ThreadingHTTPServer((host, port), Handler)
     ip = lan_ip()
     print("=" * 66)
@@ -102,8 +102,11 @@ def main():
     print(f"  ledger tier     {(CFG.get('ledger') or {}).get('mode', 'local_server')}")
     print("  Ctrl+C to stop")
     print("=" * 66)
-    if "--no-browser" not in sys.argv:
-        threading.Timer(1.0, lambda: webbrowser.open(f"http://localhost:{port}")).start()
+    if "--no-browser" not in sys.argv and not os.environ.get("PORT"):
+        try:
+            threading.Timer(1.0, lambda: webbrowser.open(f"http://localhost:{port}")).start()
+        except Exception:
+            pass
     try:
         srv.serve_forever()
     except KeyboardInterrupt:
